@@ -1,0 +1,17 @@
+version: '3.4'
+
+services:
+  churchwebhelper:
+    image: churchwebhelper
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 5000:5000
+      - 5678:5678
+    env_file:
+      - .env
+    environment:
+      - DEBUG=true
+      - FLASK_ENV=development
+      - FLASK_DEBUG=true

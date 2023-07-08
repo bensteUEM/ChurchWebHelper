@@ -1,4 +1,4 @@
-from ChurchToolsWebService import *
+from ChurchWebHelper import *
 
 if __name__ == '__main__':
     ct_domain = os.environ.get('ct_domain')

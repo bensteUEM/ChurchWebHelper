@@ -4,18 +4,18 @@ from versions import VERSION
 with open("README.md", "r") as file:
     description = file.read()
 
-with open('docker/requirements.txt') as f:
+with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
 setup(
-    name='ChurchToolsApi',
+    name='ChurchWebHelper',
     version=VERSION,
     author='bensteUEM',
     author_email='benedict.stein@gmail.com',
-    description='A python package to make use of ChurchTools API and offer a Basic WebUI for some functions',
+    description='A python package to make use of ChurchTools API and Communi API with a docker packaged WebUI',
     long_description=description,
     long_description_content_type="text/markdown",
-    url='https://github.com/bensteUEM/ChurchToolsAPI',
+    url='https://github.com/bensteUEM/ChurchWebHelper',
     license='CC-BY-SA',
     python_requires='>=3.8',
     packages=find_packages(),

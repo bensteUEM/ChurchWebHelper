@@ -17,9 +17,13 @@ config = {"SESSION_PERMANENT": False,
 
 if 'CT_DOMAIN' in os.environ.keys():
     config['CT_DOMAIN'] = os.environ['CT_DOMAIN']
+else:
+    config['CT_DOMAIN'] = ''
 
 if 'COMMUNI_SERVER' in os.environ.keys():
     app.config['COMMUNI_SERVER'] = os.environ['COMMUNI_SERVER']
+else:
+    app.config['COMMUNI_SERVER'] = ''
 
 app.config.update(config)
 Session(app)

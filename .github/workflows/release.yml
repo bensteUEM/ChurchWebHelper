@@ -42,10 +42,10 @@ jobs:
             - needs to be published from draft online
             
             Install as package using:
-            pip install git+https://github.com/bensteUEM/ChurchToolsAPI.git@${{env.VERSION}}#egg=ChurchToolsAPI
+            pip install git+https://github.com/bensteUEM/ChurchWebHelper.git@${{env.VERSION}}#egg=ChurchWebHelper
             
             or use docker image at
-            ghcr.io/bensteuem/churchtools_webservice:latest            
+            ghcr.io/bensteuem/church_web_helper:latest            
 
           draft: true
           prerelease: false

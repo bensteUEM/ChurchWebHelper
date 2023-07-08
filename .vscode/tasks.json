@@ -1,0 +1,39 @@
+{
+"version": "2.0.0",
+"tasks": [
+  {
+	"label": "Docker Compose Up",
+	"type": "shell",
+	"command": "docker-compose",
+	"args": [
+        "-f",
+        "docker-compose.yml",
+        "up"
+      ],
+	"group": {
+	  "kind": "build",
+	  "isDefault": true
+	},
+	"presentation": {
+        "reveal": "always"
+      }
+  },
+  {
+	"label": "Docker Compose Up Debug",
+	"type": "shell",
+	"command": "docker-compose",
+	"args": [
+        "-f",
+        "docker-compose.debug.yml",
+        "up"
+      ],
+	"group": {
+	  "kind": "build",
+	  "isDefault": true
+	},
+	"presentation": {
+        "reveal": "always"
+      }
+  }
+]
+}

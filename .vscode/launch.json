@@ -5,16 +5,16 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ChurchToolsWebService (local)",
+      "name": "ChurchWebHelper (local)",
       "type": "python",
       "request": "launch",
-      "module": "ChurchToolsWebService",
+      "module": "ChurchWebHelper",
       "cwd": "${workspaceFolder}",
       "env": {
         "FLASK_APP": "main_web.py",
         "FLASK_DEBUG": "1",
-        "PYTHONUNBUFFERED":"1",
-        "CT_DOMAIN":"https://elkw1610.krz.tools",
+        "PYTHONUNBUFFERED": "1",
+        "CT_DOMAIN": "https://elkw1610.krz.tools",
         "COMMUNI_SERVER": "https://api.communiapp.de/rest"
       },
       "args": [
@@ -26,23 +26,20 @@
       "justMyCode": true
     },
     {
-      "name": "Python: Current File",
-      "type": "python",
+      "name": "Docker Compose Up",
+      "type": "node",
       "request": "launch",
-      "program": "${file}",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/.vscode/tasks.json",
+      "preLaunchTask": "Docker Compose Up",
+      "outFiles": []
     },
     {
-      "name": "Python: sdist bdist_wheel",
-      "type": "python",
+      "name": "Docker Compose Up (Debug)",
+      "type": "node",
       "request": "launch",
-      "module": "setup",
-      "args": [
-        "sdist",
-        "bdist_wheel"
-      ],
-      "cwd": "${workspaceFolder}"
+      "program": "${workspaceFolder}/.vscode/tasks.json",
+      "preLaunchTask": "Docker Compose Up Debug",
+      "outFiles": []
     }
   ]
 }

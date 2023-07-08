@@ -1,5 +1,7 @@
 # Setup
 
+THIS README IS OUTDATED and needs to be updated to reflect the correct project SPLIT! see #1
+
 ## Using project source code directly
 
 Downloading the source code of the project by default a config.py
@@ -23,10 +25,10 @@ to access your system
 
 - check the docstrings for correct usage
 
-The latest release can be found on https://github.com/bensteUEM/ChurchToolsAPI/releases
+The latest release can be found on https://github.com/bensteUEM/ChurchWebHelper/releases
 
 It can be installed using
-```pip install git+https://github.com/bensteUEM/ChurchToolsAPI.git@vX.X.X#egg=ChurchToolsAPI'```
+```pip install git+https://github.com/bensteUEM/ChurchWebHelper.git@vX.X.X#egg=ChurchToolsAPI'```
 replacing X.X.X by a released version number
 
 ## Using it via docker or github actions
@@ -49,40 +51,9 @@ However please check the log files and expect incomplete results if the user is 
 
 # Development use
 
-The script was coded using PyCharm Community edition. 
+The script was coded using VS Code. 
 Test cases are automatically run when pushed to GitHub. This ensures that basic functionality is checked against at least one environment.
-
-Please be aware that some of the test cases require specific IDs to be present on the CT server which is tested against.
-The respective function do have a hint like the one below in the docstring of the respective functions
-
-```
-IMPORTANT - This test method and the parameters used depend on the target system!
-```
-
 You are more than welcome to contribute additional code using respective feature branches and pull requests.
-
-## Compatibility
-
-Tested against the current Churchtools APIs as of March 2023.
-More information is provided on the respective ChurchTools pages.
-
-### REST API
-
-https://YOUR_DOMAIN/api/
-
-More recent and should be used for anything that is accessible through this API.
-Documentation of additional endpoints can be found opening the respective URL.
-The API was developed to support the ChurchTools Web App and does not yet include th full feature set of CT Web
-
-### Legacy API
-
-https://api.church.tools/index.html
-
-Legacy API used by the WebUI which includes some endpoints that were not yet implemented into the REST API.
-Some functions can be reverse engineered using Web-Developer Console to monitor requests.
-The API is subject to change and might stop working with any future release!
-
-It is also more time consuming than the REST api as it often queries large sets of data instead of specific items.
 
 # License
 
@@ -98,4 +69,3 @@ Anybody using this code is more than welcome to contribute with change requests 
 ## Contributors
 
 * benste - implemented for use at Evangelische Kirchengemeinde Baiersbronn (https://www.evang-kirche-baiersbronn.de/)
-* kolibri52 - Jonathan supporting Liebenzeller Gemeinschaft Oettingen (https://lgv-oe.de/)"

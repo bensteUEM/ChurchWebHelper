@@ -39,9 +39,9 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: docker/Dockerfile
+          file: Dockerfile
           push: true
-          tags: ${{ env.GHCR_REGISTRY }}/bensteuem/churchtools_webservice:${{ env.GITHUB_SHA_SHORT }}
+          tags: ${{ env.GHCR_REGISTRY }}/bensteuem/church_web_helper:${{ env.GITHUB_SHA_SHORT }}
           build-args: VERSION=${{ env.VERSION }}
         env:
           username: ${{ env.GHCR_USERNAME }}
