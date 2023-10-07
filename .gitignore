@@ -139,3 +139,6 @@ flask_session
 
 # Pycharm Run Configurations
 /run_configs/
+
+#other
+poetry.lock

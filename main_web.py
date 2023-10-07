@@ -1,5 +1,5 @@
 import secure.config
-from ChurchWebHelper import *
+from church_web_helper.app import *
 
 if __name__ == '__main__':
     """
