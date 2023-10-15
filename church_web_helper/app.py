@@ -4,8 +4,8 @@ from datetime import datetime
 
 from flask import Flask, render_template, request, redirect, session, send_file, url_for
 
-from ChurchToolsApi import ChurchToolsApi as CTAPI
-from CommuniApi import CommuniApi
+from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
+from communi_api.communi_api import CommuniApi
 from flask_session import Session
 
 app = Flask(__name__)
@@ -64,13 +64,15 @@ def login():
             return redirect('/main')
 
         error = 'Invalid Login'
-        return render_template('login_churchtools.html', error=error, ct_domain=app.config['CT_DOMAIN'])
+        return render_template('login_churchtools.html',
+                               error=error, ct_domain=app.config['CT_DOMAIN'])
     else:
         if 'ct_api' not in session:
             user = None
         else:
             user = session["ct_api"].who_am_i()
-        return render_template('login_churchtools.html', user=user, ct_domain=app.config['CT_DOMAIN'])
+        return render_template('login_churchtools.html',
+                               user=user, ct_domain=app.config['CT_DOMAIN'])
 
 
 @app.route('/login_communi', methods=['GET', 'POST'])
@@ -85,19 +87,23 @@ def login_communi():
         communi_appid = request.form['communi_appid']
 
         session['communi_api'] = CommuniApi(
-            communi_server=communi_server, communi_token=communi_token, communi_appid=communi_appid)
+            communi_server=communi_server,
+            communi_token=communi_token,
+            communi_appid=communi_appid)
         if session['communi_api'].who_am_i() is not False:
             app.config['COMMUNI_SERVER'] = communi_server
             return redirect('/main')
 
         error = 'Invalid Login'
-        return render_template('login_communi.html', error=error, communi_server=communi_server)
+        return render_template('login_communi.html',
+                               error=error, communi_server=communi_server)
     else:
         if 'communi_api' not in session:
             user = None
         else:
             user = session["communi_api"].who_am_i()
-        return render_template('login_communi.html', user=user, communi_server=app.config['COMMUNI_SERVER'])
+        return render_template(
+            'login_communi.html', user=user, communi_server=app.config['COMMUNI_SERVER'])
 
 
 @app.route('/main')
@@ -119,7 +125,8 @@ def events():
 
         events_temp = session['ct_api'].get_events()
         # events_temp.extend(session['ct_api'].get_events(eventId=2147))  # debugging
-        # events_temp.extend(session['ct_api'].get_events(eventId=2129))  # debugging
+        # events_temp.extend(session['ct_api'].get_events(eventId=2129))  #
+        # debugging
         logging.debug("{} Events loaded".format(len(events_temp)))
 
         event_choices = []
