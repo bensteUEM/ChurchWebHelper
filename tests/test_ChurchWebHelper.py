@@ -2,9 +2,8 @@ import ast
 import logging
 import os
 import unittest
-from datetime import datetime, timedelta
 
-from ChurchToolsApi import ChurchToolsApi
+from churchtools_api.churchtools_api import ChurchToolsApi
 
 
 class TestsChurchWebHelper(unittest.TestCase):
@@ -16,7 +15,8 @@ class TestsChurchWebHelper(unittest.TestCase):
             self.ct_domain = os.environ['CT_DOMAIN']
             users_string = os.environ['CT_USERS']
             self.ct_users = ast.literal_eval(users_string)
-            logging.info('using connection details provided with ENV variables')
+            logging.info(
+                'using connection details provided with ENV variables')
         else:
             from secure.config import ct_token
             self.ct_token = ct_token
@@ -24,9 +24,12 @@ class TestsChurchWebHelper(unittest.TestCase):
             self.ct_domain = ct_domain
             from secure.config import ct_users
             self.ct_users = ct_users
-            logging.info('using connection details provided from secrets folder')
+            logging.info(
+                'using connection details provided from secrets folder')
 
-        self.api = ChurchToolsApi(domain=self.ct_domain, ct_token=self.ct_token)
+        self.api = ChurchToolsApi(
+            domain=self.ct_domain,
+            ct_token=self.ct_token)
         logging.basicConfig(filename='logs/TestsChurchToolsApi.log', encoding='utf-8',
                             format="%(asctime)s %(name)-10s %(levelname)-8s %(message)s",
                             level=logging.DEBUG)
@@ -44,4 +47,4 @@ class TestsChurchWebHelper(unittest.TestCase):
         Tries to create a login with churchTools using specified username and password
         :return:
         """
-        self.assertTrue(True,'Tests not implemented yet')
+        self.assertTrue(True, 'Tests not implemented yet')

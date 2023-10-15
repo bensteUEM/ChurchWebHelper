@@ -8,7 +8,7 @@
       "name": "ChurchWebHelper (local)",
       "type": "python",
       "request": "launch",
-      "module": "ChurchWebHelper",
+      "module": "church_web_helper",
       "cwd": "${workspaceFolder}",
       "env": {
         "FLASK_APP": "main_web.py",
