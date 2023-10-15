@@ -25,6 +25,9 @@ if 'COMMUNI_SERVER' in os.environ.keys():
 else:
     app.config['COMMUNI_SERVER'] = ''
 
+if 'VERSION' in os.environ.keys():
+    config['VERSION'] = os.environ['VERSION']
+
 app.config.update(config)
 Session(app)
 
@@ -96,7 +99,7 @@ def login_communi():
 
 @app.route('/main')
 def main():
-    return render_template('main.html')
+    return render_template('main.html',version=app.config['VERSION'])
 
 @app.route('/test')
 def test():

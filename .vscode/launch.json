@@ -15,7 +15,8 @@
         "FLASK_DEBUG": "1",
         "PYTHONUNBUFFERED": "1",
         "CT_DOMAIN": "https://elkw1610.krz.tools",
-        "COMMUNI_SERVER": "https://api.communiapp.de/rest"
+        "COMMUNI_SERVER": "https://api.communiapp.de/rest",
+        "VERSION": "VS Code Launch config w/o version"
       },
       "args": [
         "run",
