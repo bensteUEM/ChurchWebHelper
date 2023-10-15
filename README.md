@@ -1,7 +1,5 @@
 # Setup
 
-THIS README IS OUTDATED and needs to be updated to reflect the correct project SPLIT! see #1
-
 # Running the app
 
 Downloading the source code of the project by default a .vscode directory contains samples launch configurations
