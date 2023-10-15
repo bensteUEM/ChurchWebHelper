@@ -4,36 +4,38 @@
   {
 	"label": "Docker Compose Up",
 	"type": "shell",
-	"command": "docker-compose",
-	"args": [
-        "-f",
-        "docker-compose.yml",
-        "up"
-      ],
+	"command": "VERSION=$(python3 ./versions.py) docker-compose -f docker-compose.yml up",
 	"group": {
 	  "kind": "build",
 	  "isDefault": true
+	},
+	"options": {
+		"env": {
+			"CT_DOMAIN": "https://elkw1610.krz.tools",
+			"COMMUNI_SERVER": "https://api.communiapp.de/rest"
+		}
 	},
 	"presentation": {
         "reveal": "always"
       }
   },
   {
-	"label": "Docker Compose Up Debug",
+	"label": "Docker Compose Debug Up",
 	"type": "shell",
-	"command": "docker-compose",
-	"args": [
-        "-f",
-        "docker-compose.debug.yml",
-        "up"
-      ],
-	"group": {
-	  "kind": "build",
-	  "isDefault": true
+	"command": "VERSION=$(python3 ./versions.py) docker-compose -f docker-compose.debug.yml up",
+	"options": {
+		"env": {
+			"CT_DOMAIN": "https://elkw1610.krz.tools",
+			"COMMUNI_SERVER": "https://api.communiapp.de/rest"
+		}
 	},
-	"presentation": {
-        "reveal": "always"
-      }
+	"group": {
+		"kind": "build",
+		"isDefault": true
+	  },
+	  "presentation": {
+		  "reveal": "always"
+		}
   }
 ]
 }

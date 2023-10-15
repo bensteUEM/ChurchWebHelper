@@ -139,3 +139,9 @@ flask_session
 
 # Pycharm Run Configurations
 /run_configs/
+
+# Node configurations
+node_modules
+
+package-lock.json
+package.json

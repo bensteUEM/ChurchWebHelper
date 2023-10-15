@@ -2,16 +2,16 @@ version: '3.4'
 
 services:
   churchwebhelper:
-    image: churchwebhelper
+    image: ghcr.io/bensteuem/churchwebhelper-debug:${VERSION}
     build:
       context: .
       dockerfile: ./Dockerfile
     ports:
       - 5000:5000
-      - 5678:5678
-    env_file:
-      - .env
     environment:
+      - VERSION=${VERSION}
+      - CT_DOMAIN=$CT_DOMAIN
+      - COMMUNI_SERVER=$COMMUNI_SERVER
       - DEBUG=true
       - FLASK_ENV=development
       - FLASK_DEBUG=true

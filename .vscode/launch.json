@@ -34,11 +34,11 @@
       "outFiles": []
     },
     {
-      "name": "Docker Compose Up (Debug)",
+      "name": "Docker Compose Debug Up",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/.vscode/tasks.json",
-      "preLaunchTask": "Docker Compose Up Debug",
+      "preLaunchTask": "Docker Compose Debug Up",
       "outFiles": []
     }
   ]
