@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import Flask, render_template, request, redirect, session, send_file, url_for
 
@@ -237,3 +237,26 @@ def events():
         else:
             error = 'Requested function not detected in request'
         return render_template('main.html', error=error)
+
+
+@app.route('/ct/calendar_appointments')
+def ct_calendar_appointments():
+    """
+    page which can be used to display ChurchTools calendar appointments for IFrame use
+    Use get param calendar_id=2 or similar to define a calendar
+    Use get param days to specify the number of days
+    """
+    calendar_id = request.args.get('calendar_id')
+    days = request.args.get('days')
+
+    if calendar_id is None or days is None:
+        error = 'please specify calendar_id and days as get param'
+        return render_template('ct_calendar_appointments.html', error=error)
+
+    temp = app.config['CT_DOMAIN'], app.config['COMMUNI_SERVER'], calendar_id, days
+    calendar_ids = [int(calendar_id)]
+    from_ = datetime.today()
+    to_ = from_ + timedelta(days=int(days))
+    session['ct_api'].get_calendar_appointments(
+        calendar_ids=calendar_ids, from_=from_, to_=to_)
+    return render_template('ct_calendar_appointments.html', temp=temp)
