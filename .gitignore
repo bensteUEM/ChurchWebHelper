@@ -145,3 +145,6 @@ node_modules
 
 package-lock.json
 package.json
+
+#Poetry configurations
+poetry.lock

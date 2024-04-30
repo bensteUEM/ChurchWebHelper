@@ -27,7 +27,7 @@ pyproject_toml_content = {
                 "Flask-Session": "^0.5.0",
                 "requests": "^2.31.0",
                 "python-docx": "^0.8.11",
-                "gunicorn": "^21.2.0",
+                "gunicorn": "^22.0.0",
                 "python-dotenv": "^1.0.0"
             },
             "group": {
