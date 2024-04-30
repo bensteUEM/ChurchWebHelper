@@ -5,7 +5,9 @@
 {% include 'error.html' %}
 {% include 'navbar.html' %}
 <div class="container text-center">
-    {{ test }}
+    {% if test is not none %}
+      {{ test }}
+    {% endif %}
     <div class="container">
       <div>
         This page is used to administer communi groups based on a connected ChurchTools system
@@ -29,7 +31,7 @@
         </td>
         <td >
           {% if event.group_id is not none %}
-              <a href="https://evangkirchebaiersbronn.communiapp.de/page/group/tab/content-{{ event.group_id }}">open</a>
+              <a href="https://evangkirchebaiersbronn.communiapp.de/page/group/tab/content-{{ event.group_id }}" target="_blank" rel="noopener noreferrer">open</a>
           {% endif %}
         </td>
         <td>

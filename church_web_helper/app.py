@@ -7,7 +7,6 @@ from flask import Flask, render_template, request, redirect, session, send_file,
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from communi_api.communi_api import CommuniApi
 from communi_api.churchToolsActions import delete_event_chats, create_event_chats, get_x_day_event_ids, generate_group_name_for_event
-from communi_api.communiActions import get_create_or_delete_group
 from flask_session import Session
 
 app = Flask(__name__)
@@ -130,14 +129,20 @@ def communi_events():
     event_id = request.args.get('event_id')
     action = request.args.get('action')
 
-    """
-    #TODO unfinished code! #3
-    delete_event_chats(ct_api, communi_api, event_ids)
-    create_event_chats(ct_api, communi_api, event_ids, only_relevant=True)
-    """
+    if action == 'update':
+        create_event_chats(
+            session['ct_api'],
+            session['communi_api'],
+            [event_id],
+            only_relevant=False)
+    elif action == 'delete':
+        delete_event_chats(
+            session['ct_api'],
+            session['communi_api'],
+            [event_id])
 
     reference_day = datetime.today()
-    event_ids_past = get_x_day_event_ids(session['ct_api'], reference_day, -14)
+    event_ids_past = get_x_day_event_ids(session['ct_api'], reference_day, -7)
     event_ids_future = get_x_day_event_ids(
         session['ct_api'], reference_day, 15)
 
@@ -165,10 +170,8 @@ def communi_events():
             "group_id": group_id}
         events.append(event_short)
 
-    test = {'event_id': event_id, "action": action, "other": None}
-
     if request.method == 'GET':
-        return render_template('communi_events.html', events=events, test=test)
+        return render_template('communi_events.html', events=events, test=None)
 
     elif request.method == 'POST':
         if 'event_id' not in request.form.keys():
