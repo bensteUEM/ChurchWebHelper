@@ -1,4 +1,5 @@
 import logging
+import locale
 import os
 from datetime import datetime, timedelta
 
@@ -30,6 +31,8 @@ if 'VERSION' in os.environ.keys():
     config['VERSION'] = os.environ['VERSION']
 
 app.config.update(config)
+locale.setlocale(locale.LC_TIME, 'de_DE')
+
 Session(app)
 
 
@@ -245,18 +248,77 @@ def ct_calendar_appointments():
     page which can be used to display ChurchTools calendar appointments for IFrame use
     Use get param calendar_id=2 or similar to define a calendar
     Use get param days to specify the number of days
+    Use optional get param services to specify a , separated list of service IDs to include
+    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using ,
     """
     calendar_id = request.args.get('calendar_id')
     days = request.args.get('days')
+    if requested_services := request.args.get('services') is not None:
+        requested_services = request.args.get('services').split(',')
+        requested_services = [int(num) for num in requested_services]
+    else:
+        requested_services = None
+
+    special_name_calendar_ids = request.args.get('special_name')
+    if special_name_calendar_ids is not None:
+        special_name_calendar_ids = request.args.get('special_name').split(',')
+        special_name_calendar_ids = [int(num)
+                                     for num in special_name_calendar_ids]
 
     if calendar_id is None or days is None:
         error = 'please specify calendar_id and days as get param'
-        return render_template('ct_calendar_appointments.html', error=error)
+        return render_template(
+            'ct_calendar_appointments.html', error=error, data=None)
 
-    temp = app.config['CT_DOMAIN'], app.config['COMMUNI_SERVER'], calendar_id, days
     calendar_ids = [int(calendar_id)]
     from_ = datetime.today()
     to_ = from_ + timedelta(days=int(days))
-    session['ct_api'].get_calendar_appointments(
+
+    appointments = session['ct_api'].get_calendar_appointments(
         calendar_ids=calendar_ids, from_=from_, to_=to_)
-    return render_template('ct_calendar_appointments.html', temp=temp)
+
+    # building a dict with day as key
+    data = {}
+    format_code = '%Y-%m-%dT%H:%M:%S%z'
+
+    for appointment in appointments:
+        caption = appointment['caption']
+        date = datetime.strptime(
+            appointment['startDate'], format_code)
+
+        day = date.astimezone().strftime("%A %e.%m.%Y")
+
+        # Check if special name is requested with calendar IDs
+        if isinstance(special_name_calendar_ids, list):
+            special_names = session['ct_api'].get_calendar_appointments(
+                calendar_ids=special_name_calendar_ids,
+                from_=date, to_=date + timedelta(days=1))
+            if special_names is not None:
+                if len(special_names) > 0:
+                    special_name = special_names[0]['caption']
+                    day = f'{day} ({special_name})'
+
+        time = date.astimezone().strftime("%H:%M")
+
+        if requested_services is not None:
+            event = session['ct_api'].get_event_by_calendar_appointment(
+                appointment['id'], date)
+            available_services = event['eventServices']
+            persons = [
+                service['name'] for service in available_services if service['serviceId'] in requested_services]
+            persons = [person for person in persons if person is not None]
+            if len(persons) > 0:
+                persons = ", ".join(persons)
+            else:
+                persons = None
+        else:
+            persons = None
+
+        if day not in data.keys():
+            data[day] = []
+
+        data[day].append(
+            {'time': time, 'caption': caption, 'persons': persons})
+
+    return render_template(
+        'ct_calendar_appointments.html', data=data)

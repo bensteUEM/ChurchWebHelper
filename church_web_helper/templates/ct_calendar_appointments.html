@@ -1,9 +1,25 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/html" lang="en">
-  {% include 'header.html' %}
-  <body>
-    {% include 'error.html' %}
-    {% include 'navbar.html' %}
-    <div class="container text-center">{{ temp }}</div>
-  </body>
+{% include 'header.html' %}
+
+<body>
+  {% include 'error.html' %}
+  {% include 'navbar.html' %}
+  <div class="container text-left">
+    {% if not error %}
+    {% for key, value in data.items() %}
+    <p class="font-weight-bold"><strong>{{ key }}</strong></p>
+    {% for appointment in value %}
+    <p class="MsoBodyText2">
+      {{ appointment.time }} Uhr {{ appointment.caption }}
+      {% if appointment.persons is not none %}
+      ({{ appointment.persons }})
+      {% endif %}
+    </p>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+  </div>
+</body>
+
 </html>
