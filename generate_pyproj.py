@@ -21,8 +21,8 @@ pyproject_toml_content = {
             "include": ["templates/*.html", "static/*"],
             "dependencies": {
                 "python": "^3.8",
-                "churchtools-api": {"git": "https://github.com/bensteUEM/ChurchToolsAPI.git", "rev": "1.5.1"},
-                "communi-api": {"git": "https://github.com/bensteUEM/CommuniAPI.git", "rev": "1.1.0"},
+                "churchtools-api": {"git": "https://github.com/bensteUEM/ChurchToolsAPI.git", "branch": "master"},
+                "communi-api": {"git": "https://github.com/bensteUEM/CommuniAPI.git", "branch": "master"},
                 "Flask": "^2.3.2",
                 "Flask-Session": "^0.5.0",
                 "requests": "^2.31.0",

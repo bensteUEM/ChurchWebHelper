@@ -24,11 +24,11 @@ python-dotenv = "^1.0.0"
 
 [tool.poetry.dependencies.churchtools-api]
 git = "https://github.com/bensteUEM/ChurchToolsAPI.git"
-rev = "1.5.1"
+branch = "master"
 
 [tool.poetry.dependencies.communi-api]
 git = "https://github.com/bensteUEM/CommuniAPI.git"
-rev = "1.1.0"
+branch = "master"
 
 [tool.poetry.group.dev.dependencies]
 poetry = "^1.6.1"
