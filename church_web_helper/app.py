@@ -335,12 +335,18 @@ def ct_calendar_appointments():
         'ct_calendar_appointments.html', data=data)
 
 
-@app.route("/ct/service_workload",methods=['GET', 'POST'])
+@app.route("/ct/service_workload", methods=["GET", "POST"])
 def ct_service_workload():
+    available_calendars = {
+        cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
+    }
+
     if request.method == "GET":  # set defaults if case of new request
         DEFAULT_TIMEFRAME_MONTHS = 6
         from_date = datetime.combine(datetime.now().date(), time.min)
-        to_date = datetime.combine(from_date + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS), time.max)
+        to_date = datetime.combine(
+            from_date + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS), time.max
+        )
 
         MIN_SERVICES_COUNT = 5
 
@@ -354,15 +360,22 @@ def ct_service_workload():
             ".*chwesterherz.*",
         ]
 
+        selected_calendars = available_calendars.keys()
+
     elif request.method == "POST":
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
         to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
         MIN_SERVICES_COUNT = int(request.form["min_services_count"])
-        EXCLUDE_PATTERNS = ast.literal_eval(request.form["exclude_patterns"])
+        EXCLUDE_PATTERNS = (
+            ast.literal_eval(request.form["exclude_patterns"])
+            if len(request.form["exclude_patterns"]) > 0
+            else []
+        )
 
-    # depend on system config!
-    GODI_CALENDAR_ID = "2"
-    calendar_ids = [GODI_CALENDAR_ID]
+        selected_calendars = [
+            int(calendar_id)
+            for calendar_id in request.form.getlist("selected_calendars")
+        ]
 
     # depend on system config!
     TECHNIK = 3
@@ -383,37 +396,36 @@ def ct_service_workload():
 
     collected_data = []
     for event in content:
-        if content[0]["calendar"]["domainIdentifier"] not in calendar_ids:
-            continue
+        if int(event["calendar"]["domainIdentifier"]) in selected_calendars:
+            # filter to service categories only
+            # filtered_services = [event["eventServices"] for event in content if content[0]["calendar"]["domainIdentifier"] in calendar_ids]
 
-        # filter to service categories only
-        # filtered_services = [event["eventServices"] for event in content if content[0]["calendar"]["domainIdentifier"] in calendar_ids]
+            # filter to specific services only
+            for service in event["eventServices"]:
+                exclude = False
 
-        # filter to specific services only
-        for service in event["eventServices"]:
-            
-            exclude = False
+                for pattern in EXCLUDE_PATTERNS:
+                    if re.search(pattern, event["name"]):
+                        exclude = True
+                        break
 
-            for pattern in EXCLUDE_PATTERNS:
-                if re.search(pattern, event["name"]):
-                    exclude = True
-                    break
+                if exclude:
+                    continue
 
-            if exclude: 
-                continue
-
-            collected_data.append(
-                {
-                    "Datum": datetime.strptime(
-                        event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
-                    ),
-                    "Eventname" : event["name"],
-                    "Dienst": service["serviceId"],
-                    "Name": service["name"],
-                }
-            )
+                collected_data.append(
+                    {
+                        "Datum": datetime.strptime(
+                            event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
+                        ),
+                        "Eventname": event["name"],
+                        "Dienst": service["serviceId"],
+                        "Name": service["name"],
+                    }
+                )
 
     service_data = pd.DataFrame(collected_data)
+    if len(service_data) == 0:
+        service_data = pd.DataFrame(columns=["Datum", "Eventname", "Dienst", "Name"])
 
     # retrieve service names to replace numbers by labels
     services_map = session["ct_api"].get_event_masterdata(
@@ -434,66 +446,70 @@ def ct_service_workload():
     filter_only_mapped = ~service_data["Dienst"].apply(lambda x: isinstance(x, int))
 
     # remove all items that are not mapped (not desired)
-    service_data = service_data[filter_only_mapped]
+    service_data = service_data.loc[filter_only_mapped]
     services = set(service_data["Dienst"])
 
     # remove all entries which don't meet minimum service count required
     filter_names_keep = service_data["Name"].replace(
         service_data["Name"].value_counts() > MIN_SERVICES_COUNT
     )
-    service_data = service_data[filter_names_keep]
+    service_data = service_data.loc[filter_names_keep]
 
-    #prepare event names
+    # prepare event names
     event_names = dict(service_data["Eventname"].value_counts())
 
     # prepare names for display
     names = set(service_data["Name"])
 
-    # rolling chart
-    df_rolling = (
-        service_data.groupby("Name")["Datum"]
-        .value_counts()
-        .unstack()
-        .fillna(0)
-        .transpose()
-    )
-    df_rolling = df_rolling.rolling(window=len(df_rolling), min_periods=1).sum()
+    plots = []
+    if len(service_data) > 0:
+        # rolling chart
+        df_rolling = (
+            service_data.groupby("Name")["Datum"]
+            .value_counts()
+            .unstack()
+            .fillna(0)
+            .transpose()
+        )
+        df_rolling = df_rolling.rolling(window=len(df_rolling), min_periods=1).sum()
 
-    ax1 = df_rolling.plot()
-    y_min, y_max = ax1.get_ylim()
-    ax1.set_yticks(range(int(y_min), int(y_max) + 1, 1))
+        ax1 = df_rolling.plot()
+        y_min, y_max = ax1.get_ylim()
+        ax1.set_yticks(range(int(y_min), int(y_max) + 1, 1))
 
-    # Save it to a BytesIO object
-    img = io.BytesIO()
-    plt.savefig(img, format="png")
-    img.seek(0)
-    plot_encoded = base64.b64encode(img.getvalue()).decode("utf8")
+        # Save it to a BytesIO object
+        img = io.BytesIO()
+        plt.savefig(img, format="png")
+        img.seek(0)
+        plots.append(base64.b64encode(img.getvalue()).decode("utf8"))
 
-    # service types by person
-    df_diensttyp = (
-        service_data.groupby(["Dienst"])["Name"]
-        .value_counts()
-        .unstack()
-        .fillna(0)
-        .transpose()
-    )
-    df_diensttyp.plot.bar(stacked=True)
+        # service types by person
+        df_diensttyp = (
+            service_data.groupby(["Dienst"])["Name"]
+            .value_counts()
+            .unstack()
+            .fillna(0)
+            .transpose()
+        )
+        df_diensttyp.plot.bar(stacked=True)
 
-    # Save it to a BytesIO object
-    img = io.BytesIO()
-    plt.savefig(img, format="png")
-    img.seek(0)
-    plot_encoded2 = base64.b64encode(img.getvalue()).decode("utf8")
+        # Save it to a BytesIO object
+        img = io.BytesIO()
+        plt.savefig(img, format="png")
+        img.seek(0)
+        plots.append(base64.b64encode(img.getvalue()).decode("utf8"))
 
     return render_template(
         "ct_service_workload.html",
         error=None,
         event_names=event_names,
-        chart_urls=[plot_encoded, plot_encoded2],
+        plots=plots,
         names=names,
         services=services,
         from_date=from_date,
         to_date=to_date,
         min_services_count=MIN_SERVICES_COUNT,
-        exclude_patterns=EXCLUDE_PATTERNS
+        exclude_patterns=EXCLUDE_PATTERNS,
+        available_calendars=available_calendars,
+        selected_calendars=selected_calendars,
     )

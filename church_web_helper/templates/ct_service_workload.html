@@ -6,22 +6,30 @@
     {% include 'error.html' %}
     {% include 'navbar.html' %}
     <div class="container">
-        <h2>Dienste</h2>
-        <ul>
-            {% for service in services %}
-            <li>{{ service }}</li>
-            {% endfor %}
-        </ul>
-
-        <h2>Namen</h2>
-        <ul>
-            {% for name in names %}
-            <li>{{ name }}</li>
-            {% endfor %}
-        </ul>
-
-        <h2>Angewendete Filter</h2>
         <form action="{{ url_for('ct_service_workload') }}" method="POST">
+            <h2>Kalender</h2>
+            <select class="form-select" multiple aria-label="multiple select example" name="selected_calendars">
+                {% for calendar_id, calendar_name in available_calendars.items() %}
+                <option {% if calendar_id in selected_calendars %} selected{% endif %} value="{{calendar_id}}">
+                    {{calendar_name}}</option>
+                {% endfor %}
+            </select>
+            <h2>Dienste</h2>
+            <ul>
+                {% for service in services %}
+                <li>{{ service }}</li>
+                {% endfor %}
+            </ul>
+
+            <h2>Namen</h2>
+            <ul>
+                {% for name in names %}
+                <li>{{ name }}</li>
+                {% endfor %}
+            </ul>
+
+            <h2>Angewendete Filter</h2>
+
             <table class="table">
                 <tr>
                     <th>Was</th>
@@ -60,15 +68,15 @@
             </table>
             <button type="submit" class="btn btn-primary">Auswahl anpassen</button>
         </form>
-        <h2>Diagramme</h2>
-        {% for chart_url in chart_urls %}
+        {% if plots %}<h2>Diagramme</h2>{%endif%}
+        {% for plot in plots %}
         <div>
-            <img src="data:image/png;base64,{{ chart_url }}">
+            <img src="data:image/png;base64,{{ plot }}">
         </div>
         <hr>
         {% endfor %}
 
-        <h2>Veranstaltungen</h2>
+        {% if event_names %}<h2>Veranstaltungen</h2>{%endif%}
         <div>
             {% for eventname, occurancecount in event_names.items() %}
             <div>{{eventname}} : {{occurancecount}}</div>
