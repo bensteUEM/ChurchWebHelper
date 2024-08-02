@@ -1,61 +1,80 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/html" lang="en">
 {% include 'header.html' %}
+
 <body>
-{% include 'error.html' %}
-{% include 'navbar.html' %}
-<div class="container">
-    <h2>Dienste</h2>
-    <ul>
-    {% for service in services %}
-        <li>{{ service }}</li>
-    {% endfor %}
-    </ul>
+    {% include 'error.html' %}
+    {% include 'navbar.html' %}
+    <div class="container">
+        <h2>Dienste</h2>
+        <ul>
+            {% for service in services %}
+            <li>{{ service }}</li>
+            {% endfor %}
+        </ul>
 
-    <h2>Namen</h2>
-    <ul>
-    {% for name in names %}
-        <li>{{ name }}</li>
-    {% endfor %}
-    </ul>
+        <h2>Namen</h2>
+        <ul>
+            {% for name in names %}
+            <li>{{ name }}</li>
+            {% endfor %}
+        </ul>
 
-    <h2>Angewendete Filter</h2>
-    <table class="table">
-        <tr>
-            <th>Was</th>
-            <th>Wie</th>
-        </tr>
-        <tr>
-            <td>Von</td>
-            <td>{{ from_date }}</td>
-        </tr>
-        <tr>
-            <td>Bis</td>
-            <td>{{ to_date }}</td>
-        </tr>
-        <tr>
-            <td>Min Dienste</td>
-            <td>{{min_services_count}}</td>
-        </tr>
-        <tr>
-            <td>Excluded Patterns</td>
-            <td>{{exclude_patterns}}</td>
-        </tr>
-    </table>
-    <h2>Diagramme</h2>
-    {% for chart_url in chart_urls %}
-    <div>
-        <img src="data:image/png;base64,{{ chart_url }}">
-    </div>
-    <hr>
-    {% endfor %}
-
-    <h2>Veranstaltungen</h2>
-    <div>
-        {% for eventname, occurancecount in event_names.items() %}
-        <div>{{eventname}} : {{occurancecount}}</div>
+        <h2>Angewendete Filter</h2>
+        <form action="{{ url_for('ct_service_workload') }}" method="POST">
+            <table class="table">
+                <tr>
+                    <th>Was</th>
+                    <th>Wie</th>
+                </tr>
+                <tr>
+                    <td>Von</td>
+                    <td>
+                        <input type="date" id="date" class="form-control" name="from_date"
+                            value="{{ from_date.strftime('%Y-%m-%d') }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Bis</td>
+                    <td>
+                        <input type="date" id="date" class="form-control" name="to_date"
+                            value="{{ to_date.strftime('%Y-%m-%d') }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Min Dienste</td>
+                    <td>
+                        <input type="number" id="number" class="form-control" name="min_services_count"
+                            value="{{ min_services_count }}">
+                    </td>
+                </tr>
+                <tr>
+                    <td>Excluded Patterns</td>
+                    <td>
+                        <input type="text" id="text" class="form-control form-text" name="exclude_patterns"
+                            value="{{ exclude_patterns }}">
+                        <div id="exclude_patterns_help" class="form-text">enter a list of regex strings e.g.
+                            ['.*immer.*',['.*dacht.*'']</div>
+                    </td>
+                </tr>
+            </table>
+            <button type="submit" class="btn btn-primary">Auswahl anpassen</button>
+        </form>
+        <h2>Diagramme</h2>
+        {% for chart_url in chart_urls %}
+        <div>
+            <img src="data:image/png;base64,{{ chart_url }}">
+        </div>
+        <hr>
         {% endfor %}
+
+        <h2>Veranstaltungen</h2>
+        <div>
+            {% for eventname, occurancecount in event_names.items() %}
+            <div>{{eventname}} : {{occurancecount}}</div>
+            {% endfor %}
+        </div>
     </div>
-</div>
 </body>
+
 </html>

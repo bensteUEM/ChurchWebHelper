@@ -1,9 +1,10 @@
+import ast
 import base64
 import io
 import logging
 import locale
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 import re
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -334,8 +335,30 @@ def ct_calendar_appointments():
         'ct_calendar_appointments.html', data=data)
 
 
-@app.route("/ct/service_workload")
+@app.route("/ct/service_workload",methods=['GET', 'POST'])
 def ct_service_workload():
+    if request.method == "GET":  # set defaults if case of new request
+        DEFAULT_TIMEFRAME_MONTHS = 6
+        from_date = datetime.combine(datetime.now().date(), time.min)
+        to_date = datetime.combine(from_date + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS), time.max)
+
+        MIN_SERVICES_COUNT = 5
+
+        EXCLUDE_PATTERNS = [
+            ".*ohnzimmer.*",
+            ".*chülergottesdienst.*",
+            ".*aufnachmittag.*",
+            ".*Trauung.*",
+            ".*Andacht.*",
+            ".*nzert.*",
+            ".*chwesterherz.*",
+        ]
+
+    elif request.method == "POST":
+        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
+        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+        MIN_SERVICES_COUNT = int(request.form["min_services_count"])
+        EXCLUDE_PATTERNS = ast.literal_eval(request.form["exclude_patterns"])
 
     # depend on system config!
     GODI_CALENDAR_ID = "2"
@@ -353,14 +376,6 @@ def ct_service_workload():
     BEAM = 72
     TECH_SUPPORT = 104
     relevant_service_ids = [TON, BEAM, FOLIEN_VORBEREITEN, STREAM, TECH_SUPPORT]
-
-    from_date = datetime.now()  # datetime(year=2024,month=9,day=15)
-    to_date = from_date + relativedelta(months=6)
-
-    # number of minimum numbers of service in order to take into account the specific person
-    MIN_SERVICES_COUNT = 5
-
-    EXCLUDE_PATTERNS = [r".*Wohnzimmer.*",r".*Schülergottesdienst.*",r".*Taufnachmittag.*",r".*Trauung.*",r".*Andacht.*", r".*nzert.*",r".*Schwesterherz.*"]
 
     content = session["ct_api"].get_events(
         from_=from_date, to_=to_date, include="eventServices"
