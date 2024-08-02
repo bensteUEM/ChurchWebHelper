@@ -335,29 +335,31 @@ def ct_calendar_appointments():
 
 @app.route("/ct/service_workload")
 def ct_service_workload():
+    debug = ""
     # depend on system config!
     GODI_CALENDAR_ID = "2"
     calendar_ids = [GODI_CALENDAR_ID]
 
     # depend on system config!
-    # TECHNIK = 3
-    # relevant_service_category = [TECHNIK]
+    TECHNIK = 3
+    relevant_service_category = [TECHNIK]
 
     # depend on system config!
     TON = 6
     FOLIEN_VORBEREITEN = 57
     STREAM = 69
+
     BEAM = 72
     TECH_SUPPORT = 104
-    relevant_service_ids = [TON, FOLIEN_VORBEREITEN, STREAM, BEAM, TECH_SUPPORT]
+    relevant_service_ids = [TON, BEAM, FOLIEN_VORBEREITEN, STREAM, TECH_SUPPORT]
 
-    now_date = datetime.now()  # datetime(year=2024,month=9,day=15)
-    future_date = now_date + relativedelta(months=6)
+    from_date = datetime.now()  # datetime(year=2024,month=9,day=15)
+    to_date = from_date + relativedelta(months=6)
 
     # TODO exclude Wohnzimmer
 
     content = session["ct_api"].get_events(
-        from_=now_date, to_=future_date, include="eventServices"
+        from_=from_date, to_=to_date, include="eventServices"
     )
 
     collected_data = []
@@ -369,12 +371,7 @@ def ct_service_workload():
         # filtered_services = [event["eventServices"] for event in content if content[0]["calendar"]["domainIdentifier"] in calendar_ids]
 
         # filter to specific services only
-        services = [
-            service
-            for service in event["eventServices"]
-            if service["serviceId"] in relevant_service_ids
-        ]
-        for service in services:
+        for service in event["eventServices"]:
             collected_data.append(
                 {
                     "Datum": datetime.strptime(
@@ -386,6 +383,31 @@ def ct_service_workload():
             )
 
     service_data = pd.DataFrame(collected_data)
+
+    # retrieve service names to replace numbers by labels
+    services_map = session["ct_api"].get_event_masterdata(
+        type="services", returnAsDict=True
+    )
+
+    # prepare mapping for requested service category and services only
+    relevant_map = {}
+    for id, item in services_map.items():
+        if (
+            item["serviceGroupId"] in relevant_service_category
+            and item["id"] in relevant_service_ids
+        ):
+            relevant_map[id] = item["name"]
+
+    # modify dataframe for readability
+    service_data["Dienst"] = service_data["Dienst"].replace(relevant_map)
+    filter_only_mapped = ~service_data["Dienst"].apply(lambda x: isinstance(x, int))
+
+    # remove all items that are not mapped (not desired)
+    service_data = service_data[filter_only_mapped]
+    services = set(service_data["Dienst"])
+
+    # prepare names for display
+    names = set(service_data["Name"])
 
     # rolling chart
     df_rolling = (
@@ -425,6 +447,10 @@ def ct_service_workload():
 
     return render_template(
         "ct_service_workload.html",
-        content=service_data,
+        error=debug,
         chart_urls=[plot_encoded, plot_encoded2],
+        names=names,
+        services=services,
+        from_date=from_date,
+        to_date=to_date,
     )

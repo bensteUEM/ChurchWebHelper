@@ -5,9 +5,25 @@
 {% include 'error.html' %}
 {% include 'navbar.html' %}
 <div class="container">
+    <h2>Dienste</h2>
+    <ul>
+    {% for service in services %}
+        <li>{{ service }}</li>
+    {% endfor %}
+    </ul>
 
-    {{ content }}
-    <hr>
+    <h2>Namen</h2>
+    <ul>
+    {% for name in names %}
+        <li>{{ name }}</li>
+    {% endfor %}
+    </ul>
+
+    <h2>Filter</h2>
+    Von: {{ from_date }} </br>
+    Bis: {{ to_date }}
+    
+    <h2>Diagramme</h2>
     {% for chart_url in chart_urls %}
     <div>
         <img src="data:image/png;base64,{{ chart_url }}">
