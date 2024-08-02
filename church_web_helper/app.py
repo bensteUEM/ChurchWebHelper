@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, session, send_file,
 
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from communi_api.communi_api import CommuniApi
+from communi_api.churchToolsActions import delete_event_chats, create_event_chats, get_x_day_event_ids, generate_group_name_for_event
 from flask_session import Session
 
 app = Flask(__name__)
@@ -115,6 +116,66 @@ def main():
 def test():
     test = app.config['CT_DOMAIN'], app.config['COMMUNI_SERVER']
     return render_template('test.html', test=test)
+
+
+@app.route('/communi/events')
+def communi_events():
+    """
+    This page is used to admin communi groups based on churchtools planning information
+    It will list all events from past 14 and future 15 days and show their link if they exist
+
+    if event_id and action exist as GET param respective delete or update action will be executed
+    """
+    event_id = request.args.get('event_id')
+    action = request.args.get('action')
+
+    if action == 'update':
+        create_event_chats(
+            session['ct_api'],
+            session['communi_api'],
+            [event_id],
+            only_relevant=False)
+    elif action == 'delete':
+        delete_event_chats(
+            session['ct_api'],
+            session['communi_api'],
+            [event_id])
+
+    reference_day = datetime.today()
+    event_ids_past = get_x_day_event_ids(session['ct_api'], reference_day, -7)
+    event_ids_future = get_x_day_event_ids(
+        session['ct_api'], reference_day, 15)
+
+    event_ids = event_ids_past + event_ids_future
+    # TODO unfinished code! #3 - keep relevant only ...
+
+    events = []
+    for id in event_ids:
+        event = session['ct_api'].get_events(eventId=id)[0]
+        startdate = datetime.strptime(
+            event['startDate'], '%Y-%m-%dT%H:%M:%S%z')
+        datetext = startdate.astimezone().strftime('%a %b %d\t%H:%M')
+
+        group_name = generate_group_name_for_event(session['ct_api'], id)
+        group = session['communi_api'].getGroups(name=group_name)
+        if len(group) == 0:
+            group_id = None
+        else:
+            group_id = group['id']
+
+        event_short = {
+            "id": id,
+            "date": datetext,
+            "caption": event['name'],
+            "group_id": group_id}
+        events.append(event_short)
+
+    if request.method == 'GET':
+        return render_template('communi_events.html', events=events, test=None)
+
+    elif request.method == 'POST':
+        if 'event_id' not in request.form.keys():
+            redirect('/communi/events')
 
 
 @app.route('/events', methods=['GET', 'POST'])

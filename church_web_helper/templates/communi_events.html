@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+<body>
+{% include 'error.html' %}
+{% include 'navbar.html' %}
+<div class="container text-center">
+    {% if test is not none %}
+      {{ test }}
+    {% endif %}
+    <div class="container">
+      <div>
+        This page is used to administer communi groups based on a connected ChurchTools system
+      </div>
+    <table class="table table-striped">
+      <thead>
+        <tr class="table-primary">
+          <th scope="col">date</th>
+          <th scope="col">event name</th>
+          <th scope="col">link</th>
+          <th scope="col">actions</th>
+        </tr>
+      </thead>
+      {% for event in events %}
+      <tr>
+        <th scope="row">
+          {{ event.date }}
+        </th>
+        <td>
+          {{ event.caption }}
+        </td>
+        <td >
+          {% if event.group_id is not none %}
+              <a href="https://evangkirchebaiersbronn.communiapp.de/page/group/tab/content-{{ event.group_id }}" target="_blank" rel="noopener noreferrer">open</a>
+          {% endif %}
+        </td>
+        <td>
+          <div class="row">
+
+          <div class="col">
+              <a href="?action=update&event_id={{ event.id }}">
+                {% if event.group_id is none %}
+                  new
+                {% else %}
+                  update
+                {% endif %}
+              </a>
+          </div>
+          <div class="col">
+            <a href="?action=delete&event_id={{ event.id }}">delete</a>
+          </div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+  </div>
+</body>
+</html>
