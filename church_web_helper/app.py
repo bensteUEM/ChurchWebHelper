@@ -433,7 +433,7 @@ def ct_service_workload():
 
     service_data = pd.DataFrame(collected_data)
 
-    #fallback in case of no data filtered
+    # fallback in case of no data filtered
     if len(service_data) == 0:
         service_data = pd.DataFrame(columns=["Datum", "Eventname", "Dienst", "Name"])
 
@@ -447,6 +447,7 @@ def ct_service_workload():
     # modify dataframe for readability
     service_data["Dienst"] = service_data["Dienst"].replace(relevant_map)
     filter_only_mapped = ~service_data["Dienst"].apply(lambda x: isinstance(x, int))
+    service_data["Name"] = service_data["Name"].fillna("? noch offen")
 
     # remove all items that are not mapped (not desired)
     service_data = service_data.loc[filter_only_mapped]
