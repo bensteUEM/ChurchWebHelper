@@ -346,6 +346,18 @@ def ct_service_workload():
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
 
+    available_service_categories = {
+        serviceGroup["id"]: serviceGroup["name"]
+        for serviceGroup in session["ct_api"].get_event_masterdata(type="serviceGroups")
+    }
+    available_service_types_by_category = {
+        key: [] for key in available_service_categories
+    }
+    for service in session["ct_api"].get_event_masterdata(type="services"):
+        available_service_types_by_category[service["serviceGroupId"]].append(
+            {"id": service["id"], "name": service["name"]}
+        )
+
     if request.method == "GET":  # set defaults if case of new request
         DEFAULT_TIMEFRAME_MONTHS = 6
         from_date = datetime.combine(datetime.now().date(), time.min)
@@ -367,6 +379,8 @@ def ct_service_workload():
 
         selected_calendars = available_calendars.keys()
 
+        selected_service_types = {}
+
     elif request.method == "POST":
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
         to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
@@ -381,26 +395,15 @@ def ct_service_workload():
             int(calendar_id)
             for calendar_id in request.form.getlist("selected_calendars")
         ]
-
-    # depend on system config!
-    TECHNIK = 3
-    relevant_service_category = [TECHNIK]
-
-    # depend on system config!
-    TON = 6
-    FOLIEN_VORBEREITEN = 57
-    STREAM = 69
-
-    BEAM = 72
-    TECH_SUPPORT = 104
-    relevant_service_ids = [TON, BEAM, FOLIEN_VORBEREITEN, STREAM, TECH_SUPPORT]
-
-    content = session["ct_api"].get_events(
-        from_=from_date, to_=to_date, include="eventServices"
-    )
+        selected_service_types = [
+            int(service_type_id)
+            for service_type_id in request.form.getlist("selected_service_types")
+        ]
 
     collected_data = []
-    for event in content:
+    for event in session["ct_api"].get_events(
+        from_=from_date, to_=to_date, include="eventServices"
+    ):
         if int(event["calendar"]["domainIdentifier"]) in selected_calendars:
             # filter to service categories only
             # filtered_services = [event["eventServices"] for event in content if content[0]["calendar"]["domainIdentifier"] in calendar_ids]
@@ -429,22 +432,17 @@ def ct_service_workload():
                 )
 
     service_data = pd.DataFrame(collected_data)
+
+    #fallback in case of no data filtered
     if len(service_data) == 0:
         service_data = pd.DataFrame(columns=["Datum", "Eventname", "Dienst", "Name"])
 
-    # retrieve service names to replace numbers by labels
-    services_map = session["ct_api"].get_event_masterdata(
-        type="services", returnAsDict=True
-    )
-
     # prepare mapping for requested service category and services only
     relevant_map = {}
-    for id, item in services_map.items():
-        if (
-            item["serviceGroupId"] in relevant_service_category
-            and item["id"] in relevant_service_ids
-        ):
-            relevant_map[id] = item["name"]
+    for servicegroup_id, service_types in available_service_types_by_category.items():
+        for service_type in service_types:
+            if service_type["id"] in selected_service_types:
+                relevant_map[service_type["id"]] = service_type["name"]
 
     # modify dataframe for readability
     service_data["Dienst"] = service_data["Dienst"].replace(relevant_map)
@@ -452,8 +450,6 @@ def ct_service_workload():
 
     # remove all items that are not mapped (not desired)
     service_data = service_data.loc[filter_only_mapped]
-    services = set(service_data["Dienst"])
-
     # remove all entries which don't meet minimum service count required
     filter_names_keep = service_data["Name"].replace(
         service_data["Name"].value_counts() > MIN_SERVICES_COUNT
@@ -510,11 +506,13 @@ def ct_service_workload():
         event_names=event_names,
         plots=plots,
         names=names,
-        services=services,
         from_date=from_date,
         to_date=to_date,
         min_services_count=MIN_SERVICES_COUNT,
         exclude_patterns=EXCLUDE_PATTERNS,
         available_calendars=available_calendars,
         selected_calendars=selected_calendars,
+        available_service_categories=available_service_categories,
+        available_service_types_by_category=available_service_types_by_category,
+        selected_service_types=selected_service_types,
     )
