@@ -19,11 +19,29 @@
     {% endfor %}
     </ul>
 
-    <h2>Filter</h2>
-    Von: {{ from_date }} </br>
-    Bis: {{ to_date }} </br>
-    Min Dienste: {{min_services_count}}
-    
+    <h2>Angewendete Filter</h2>
+    <table class="table">
+        <tr>
+            <th>Was</th>
+            <th>Wie</th>
+        </tr>
+        <tr>
+            <td>Von</td>
+            <td>{{ from_date }}</td>
+        </tr>
+        <tr>
+            <td>Bis</td>
+            <td>{{ to_date }}</td>
+        </tr>
+        <tr>
+            <td>Min Dienste</td>
+            <td>{{min_services_count}}</td>
+        </tr>
+        <tr>
+            <td>Excluded Patterns</td>
+            <td>{{exclude_patterns}}</td>
+        </tr>
+    </table>
     <h2>Diagramme</h2>
     {% for chart_url in chart_urls %}
     <div>
@@ -31,6 +49,13 @@
     </div>
     <hr>
     {% endfor %}
+
+    <h2>Veranstaltungen</h2>
+    <div>
+        {% for eventname, occurancecount in event_names.items() %}
+        <div>{{eventname}} : {{occurancecount}}</div>
+        {% endfor %}
+    </div>
 </div>
 </body>
 </html>

@@ -4,6 +4,7 @@ import logging
 import locale
 import os
 from datetime import datetime, timedelta
+import re
 from matplotlib import pyplot as plt
 import pandas as pd
 
@@ -335,7 +336,7 @@ def ct_calendar_appointments():
 
 @app.route("/ct/service_workload")
 def ct_service_workload():
-    debug = ""
+
     # depend on system config!
     GODI_CALENDAR_ID = "2"
     calendar_ids = [GODI_CALENDAR_ID]
@@ -357,9 +358,9 @@ def ct_service_workload():
     to_date = from_date + relativedelta(months=6)
 
     # number of minimum numbers of service in order to take into account the specific person
-    MIN_SERVICES_COUNT = 9
+    MIN_SERVICES_COUNT = 5
 
-    # TODO exclude Wohnzimmer
+    EXCLUDE_PATTERNS = [r".*Wohnzimmer.*",r".*Schülergottesdienst.*",r".*Taufnachmittag.*",r".*Trauung.*",r".*Andacht.*", r".*nzert.*",r".*Schwesterherz.*"]
 
     content = session["ct_api"].get_events(
         from_=from_date, to_=to_date, include="eventServices"
@@ -375,11 +376,23 @@ def ct_service_workload():
 
         # filter to specific services only
         for service in event["eventServices"]:
+            
+            exclude = False
+
+            for pattern in EXCLUDE_PATTERNS:
+                if re.search(pattern, event["name"]):
+                    exclude = True
+                    break
+
+            if exclude: 
+                continue
+
             collected_data.append(
                 {
                     "Datum": datetime.strptime(
                         event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
                     ),
+                    "Eventname" : event["name"],
                     "Dienst": service["serviceId"],
                     "Name": service["name"],
                 }
@@ -414,6 +427,9 @@ def ct_service_workload():
         service_data["Name"].value_counts() > MIN_SERVICES_COUNT
     )
     service_data = service_data[filter_names_keep]
+
+    #prepare event names
+    event_names = dict(service_data["Eventname"].value_counts())
 
     # prepare names for display
     names = set(service_data["Name"])
@@ -456,11 +472,13 @@ def ct_service_workload():
 
     return render_template(
         "ct_service_workload.html",
-        error=debug,
+        error=None,
+        event_names=event_names,
         chart_urls=[plot_encoded, plot_encoded2],
         names=names,
         services=services,
         from_date=from_date,
         to_date=to_date,
         min_services_count=MIN_SERVICES_COUNT,
+        exclude_patterns=EXCLUDE_PATTERNS
     )
