@@ -356,6 +356,9 @@ def ct_service_workload():
     from_date = datetime.now()  # datetime(year=2024,month=9,day=15)
     to_date = from_date + relativedelta(months=6)
 
+    # number of minimum numbers of service in order to take into account the specific person
+    MIN_SERVICES_COUNT = 9
+
     # TODO exclude Wohnzimmer
 
     content = session["ct_api"].get_events(
@@ -406,6 +409,12 @@ def ct_service_workload():
     service_data = service_data[filter_only_mapped]
     services = set(service_data["Dienst"])
 
+    # remove all entries which don't meet minimum service count required
+    filter_names_keep = service_data["Name"].replace(
+        service_data["Name"].value_counts() > MIN_SERVICES_COUNT
+    )
+    service_data = service_data[filter_names_keep]
+
     # prepare names for display
     names = set(service_data["Name"])
 
@@ -453,4 +462,5 @@ def ct_service_workload():
         services=services,
         from_date=from_date,
         to_date=to_date,
+        min_services_count=MIN_SERVICES_COUNT,
     )
