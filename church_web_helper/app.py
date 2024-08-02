@@ -457,12 +457,19 @@ def ct_service_workload():
     )
     service_data = service_data.loc[filter_names_keep]
 
+    # create list of available names based on filter criteria
+    available_persons = list(service_data["Name"].unique())
+    if request.method == "GET":  # set defaults if case of new request
+        selected_persons = available_persons
+    elif request.method == "POST":
+        selected_persons = request.form.getlist("selected_persons") if len(request.form.getlist("selected_persons"))>0 else available_persons
+
+    service_data = service_data[service_data["Name"].isin(selected_persons)]
+
     # prepare event names
     event_names = dict(service_data["Eventname"].value_counts())
 
-    # prepare names for display
-    names = set(service_data["Name"])
-
+    # create plots
     plots = []
     if len(service_data) > 0:
         # rolling chart
@@ -506,7 +513,6 @@ def ct_service_workload():
         error=None,
         event_names=event_names,
         plots=plots,
-        names=names,
         from_date=from_date,
         to_date=to_date,
         min_services_count=MIN_SERVICES_COUNT,
@@ -516,4 +522,6 @@ def ct_service_workload():
         available_service_categories=available_service_categories,
         available_service_types_by_category=available_service_types_by_category,
         selected_service_types=selected_service_types,
+        available_persons = available_persons,
+        selected_persons = selected_persons,
     )
