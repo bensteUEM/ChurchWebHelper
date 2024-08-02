@@ -1,14 +1,24 @@
+import base64
+import io
 import logging
 import locale
 import os
 from datetime import datetime, timedelta
+from matplotlib import pyplot as plt
+import pandas as pd
 
 from flask import Flask, render_template, request, redirect, session, send_file, url_for
 
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from communi_api.communi_api import CommuniApi
-from communi_api.churchToolsActions import delete_event_chats, create_event_chats, get_x_day_event_ids, generate_group_name_for_event
+from communi_api.churchToolsActions import (
+    delete_event_chats,
+    create_event_chats,
+    get_x_day_event_ids,
+    generate_group_name_for_event,
+)
 from flask_session import Session
+from dateutil.relativedelta import relativedelta
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -34,7 +44,6 @@ app.config.update(config)
 locale.setlocale(locale.LC_TIME, 'de_DE')
 
 Session(app)
-
 
 @app.route('/')
 def index():
@@ -322,3 +331,100 @@ def ct_calendar_appointments():
 
     return render_template(
         'ct_calendar_appointments.html', data=data)
+
+
+@app.route("/ct/service_workload")
+def ct_service_workload():
+    # depend on system config!
+    GODI_CALENDAR_ID = "2"
+    calendar_ids = [GODI_CALENDAR_ID]
+
+    # depend on system config!
+    # TECHNIK = 3
+    # relevant_service_category = [TECHNIK]
+
+    # depend on system config!
+    TON = 6
+    FOLIEN_VORBEREITEN = 57
+    STREAM = 69
+    BEAM = 72
+    TECH_SUPPORT = 104
+    relevant_service_ids = [TON, FOLIEN_VORBEREITEN, STREAM, BEAM, TECH_SUPPORT]
+
+    now_date = datetime.now()  # datetime(year=2024,month=9,day=15)
+    future_date = now_date + relativedelta(months=6)
+
+    # TODO exclude Wohnzimmer
+
+    content = session["ct_api"].get_events(
+        from_=now_date, to_=future_date, include="eventServices"
+    )
+
+    collected_data = []
+    for event in content:
+        if content[0]["calendar"]["domainIdentifier"] not in calendar_ids:
+            continue
+
+        # filter to service categories only
+        # filtered_services = [event["eventServices"] for event in content if content[0]["calendar"]["domainIdentifier"] in calendar_ids]
+
+        # filter to specific services only
+        services = [
+            service
+            for service in event["eventServices"]
+            if service["serviceId"] in relevant_service_ids
+        ]
+        for service in services:
+            collected_data.append(
+                {
+                    "Datum": datetime.strptime(
+                        event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
+                    ),
+                    "Dienst": service["serviceId"],
+                    "Name": service["name"],
+                }
+            )
+
+    service_data = pd.DataFrame(collected_data)
+
+    # rolling chart
+    df_rolling = (
+        service_data.groupby("Name")["Datum"]
+        .value_counts()
+        .unstack()
+        .fillna(0)
+        .transpose()
+    )
+    df_rolling = df_rolling.rolling(window=len(df_rolling), min_periods=1).sum()
+
+    ax1 = df_rolling.plot()
+    y_min, y_max = ax1.get_ylim()
+    ax1.set_yticks(range(int(y_min), int(y_max) + 1, 1))
+
+    # Save it to a BytesIO object
+    img = io.BytesIO()
+    plt.savefig(img, format="png")
+    img.seek(0)
+    plot_encoded = base64.b64encode(img.getvalue()).decode("utf8")
+
+    # service types by person
+    df_diensttyp = (
+        service_data.groupby(["Dienst"])["Name"]
+        .value_counts()
+        .unstack()
+        .fillna(0)
+        .transpose()
+    )
+    df_diensttyp.plot.bar(stacked=True)
+
+    # Save it to a BytesIO object
+    img = io.BytesIO()
+    plt.savefig(img, format="png")
+    img.seek(0)
+    plot_encoded2 = base64.b64encode(img.getvalue()).decode("utf8")
+
+    return render_template(
+        "ct_service_workload.html",
+        content=service_data,
+        chart_urls=[plot_encoded, plot_encoded2],
+    )

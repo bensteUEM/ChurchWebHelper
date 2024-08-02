@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+<body>
+{% include 'error.html' %}
+{% include 'navbar.html' %}
+<div class="container">
+
+    {{ content }}
+    <hr>
+    {% for chart_url in chart_urls %}
+    <div>
+        <img src="data:image/png;base64,{{ chart_url }}">
+    </div>
+    <hr>
+    {% endfor %}
+</div>
+</body>
+</html>
