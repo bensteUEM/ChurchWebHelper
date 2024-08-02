@@ -6,93 +6,114 @@
     {% include 'error.html' %}
     {% include 'navbar.html' %}
     <div class="container">
-        <form action="{{ url_for('ct_service_workload') }}" class="form-floating mb-3" method="POST">
-            <h2>Filterung</h2>
-            <div class="row">
-                <div class="col">
-                    <label for="selected_calendars" class="form-label">Kalender</label>
-                    <select class="form-select" multiple aria-label="multiple select" id="selected_calendars" size="10"
-                        name="selected_calendars">
-                        {% for calendar_id, calendar_name in available_calendars.items() %}
-                        <option {% if calendar_id in selected_calendars %} selected{% endif %} value="{{calendar_id}}">
-                            {{calendar_name}}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col">
-                    <div class="row">
-                        <label for="from_date" class="form-label">Von</label>
-                        <input type="date" id="from_date" class="form-control" name="from_date"
-                            value="{{ from_date.strftime('%Y-%m-%d') }}">
-                    </div>
-                    <div class="row">
-                        <label for="to_date" class="form-label">Bis</label>
-                        <input type="date" id="to_date" class="form-control" name="to_date"
-                            value="{{ to_date.strftime('%Y-%m-%d') }}">
-                    </div>
-                    <div class="row">
-                        <label for="selected_persons" class="form-label">Mindestens # Dienste</label>
-                        <input type="number" id="min_services_count" class="form-control" name="min_services_count"
-                            value="{{ min_services_count }}">
-                    </div>
-                </div>
-                <div class="col">
-                    <label for="selected_service_types" class="form-label">Dienste</label>
-                    <select class="form-select" multiple aria-label="multiple select" size="10"
-                        name="selected_service_types" id="selected_service_types">
-                        {% for service_category_id, available_service_types in
-                        available_service_types_by_category.items() %}
-
-                        <optgroup label="{{available_service_categories[service_category_id]}}">
-
-                            {% for service_type in available_service_types %}
-                            <option {% if service_type['id'] in selected_service_types %} selected{% endif %}
-                                value="{{service_type['id']}}">
-                                {{service_type['name']}}</option>
+        <div class="container-fluid">
+            <form action="{{ url_for('ct_service_workload') }}" class="form-floating mb-3" method="POST">
+                <h2>Filterung</h2>
+                <div class="row">
+                    <div class="col-auto">
+                        <label for="selected_calendars" class="form-label">Kalender</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_calendars"
+                            size="10" name="selected_calendars">
+                            {% for calendar_id, calendar_name in available_calendars.items() %}
+                            <option {% if calendar_id in selected_calendars %} selected{% endif %}
+                                value="{{calendar_id}}">
+                                {{calendar_name}}</option>
                             {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <div class="row">
+                            <label for="from_date" class="form-label">Von</label>
+                            <input type="date" id="from_date" class="form-control" name="from_date"
+                                value="{{ from_date.strftime('%Y-%m-%d') }}">
+                        </div>
+                        <div class="row">
+                            <label for="to_date" class="form-label">Bis</label>
+                            <input type="date" id="to_date" class="form-control" name="to_date"
+                                value="{{ to_date.strftime('%Y-%m-%d') }}">
+                        </div>
+                        <div class="row">
+                            <label for="selected_persons" class="form-label">Mindestens # Dienste</label>
+                            <input type="number" id="min_services_count" class="form-control" name="min_services_count"
+                                value="{{ min_services_count }}">
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <label for="selected_service_types" class="form-label">Dienste</label>
+                        <select class="form-select" multiple aria-label="multiple select" size="10"
+                            name="selected_service_types" id="selected_service_types">
+                            {% for service_category_id, available_service_types in
+                            available_service_types_by_category.items() %}
 
-                        </optgroup>
-                        {% endfor %}
-                    </select>
+                            <optgroup label="{{available_service_categories[service_category_id]}}">
+
+                                {% for service_type in available_service_types %}
+                                <option {% if service_type['id'] in selected_service_types %} selected{% endif %}
+                                    value="{{service_type['id']}}">
+                                    {{service_type['name']}}</option>
+                                {% endfor %}
+
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if available_persons %}
+                    <div class="col-auto">
+                        <label for="selected_persons" class="form-label">Personen</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_persons"
+                            size="10" name="selected_persons">
+                            {% for person_name in available_persons %}
+                            <option {% if person_name in selected_persons %} selected{% endif %}
+                                value="{{person_name}}">
+                                {{person_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {%endif%}
                 </div>
-                {% if available_persons %}
-                <div class="col">
-                    <label for="selected_persons" class="form-label">Personen</label>
-                    <select class="form-select" multiple aria-label="multiple select" id="selected_persons" size="10"
-                        name="selected_persons">
-                        {% for person_name in available_persons %}
-                        <option {% if person_name in selected_persons %} selected{% endif %} value="{{person_name}}">
-                            {{person_name}}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {%endif%}
-            </div>
-            <div class="row">
-                <div class="col">
-                    <label for="exclude_patterns">Excluded Patterns</label>
-                    <input type="text" id="exclude_patterns" class="form-control form-text" name="exclude_patterns"
-                        value="{{ exclude_patterns }}">
-                    <div id="exclude_patterns_help" class="form-text">enter a list of regex strings e.g.
-                        ['.*immer.*',['.*dacht.*'']
+                <div class="row">
+                    <div class="col">
+                        <label for="exclude_patterns">Excluded Patterns</label>
+                        <input type="text" id="exclude_patterns" class="form-control form-text" name="exclude_patterns"
+                            value="{{ exclude_patterns }}">
+                        <div id="exclude_patterns_help" class="form-text">enter a list of regex strings e.g.
+                            ['.*immer.*',['.*dacht.*'']
+                        </div>
                     </div>
                 </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Auswahl anpassen</button>
-        </form>
-        {% if plots %}<h2>Diagramme</h2>{%endif%}
-        {% for plot in plots %}
-        <div class="col">
-            <img src="data:image/png;base64,{{ plot }}">
+                <button type="submit" class="btn btn-primary">Auswahl anpassen</button>
+            </form>
         </div>
-        {% endfor %}
-
-        {% if event_names %}<h2>Berücksichtigte Veranstaltungen</h2>{%endif%}
-        <div>
-            {% for eventname, occurancecount in event_names.items() %}
-            <div>{{eventname}} : {{occurancecount}}</div>
+        <div class="container-fluid">
+            {% if plots %}<h2>Diagramme</h2>{%endif%}
+            {% for plot_title, plot in plots.items() %}
+            <div class="col-auto">
+                <h3>{{plot_title}}</h3>
+                <img src="data:image/png;base64,{{ plot }}">
+            </div>
             {% endfor %}
         </div>
+
+        <div class="container">
+            {% if tables %}<h2>Tabellen</h2>{%endif%}
+            {% for table_title, table in tables.items() %}
+            <div class="col-auto">
+                <h3>{{table_title}}</h3>
+                {{ table | safe }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="container">
+            {% if event_names %}<h2>Berücksichtigte Veranstaltungen</h2>{%endif%}
+            <div class="col">
+                {% for eventname, occurancecount in event_names.items() %}
+                <div>{{eventname}} : {{occurancecount}}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+
     </div>
 </body>
 

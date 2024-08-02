@@ -425,6 +425,9 @@ def ct_service_workload():
                         "Datum": datetime.strptime(
                             event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
                         ),
+                        "Monat": datetime.strptime(
+                            event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
+                        ).strftime("%B"),
                         "Eventname": event["name"],
                         "Dienst": service["serviceId"],
                         "Name": service["name"],
@@ -462,7 +465,11 @@ def ct_service_workload():
     if request.method == "GET":  # set defaults if case of new request
         selected_persons = available_persons
     elif request.method == "POST":
-        selected_persons = request.form.getlist("selected_persons") if len(request.form.getlist("selected_persons"))>0 else available_persons
+        selected_persons = (
+            request.form.getlist("selected_persons")
+            if len(request.form.getlist("selected_persons")) > 0
+            else available_persons
+        )
 
     service_data = service_data[service_data["Name"].isin(selected_persons)]
 
@@ -470,7 +477,7 @@ def ct_service_workload():
     event_names = dict(service_data["Eventname"].value_counts())
 
     # create plots
-    plots = []
+    plots = {}
     if len(service_data) > 0:
         # rolling chart
         df_rolling = (
@@ -490,7 +497,9 @@ def ct_service_workload():
         img = io.BytesIO()
         plt.savefig(img, format="png")
         img.seek(0)
-        plots.append(base64.b64encode(img.getvalue()).decode("utf8"))
+        plots["Kummulierter Verlauf je Person"] = base64.b64encode(
+            img.getvalue()
+        ).decode("utf8")
 
         # service types by person
         df_diensttyp = (
@@ -506,13 +515,43 @@ def ct_service_workload():
         img = io.BytesIO()
         plt.savefig(img, format="png")
         img.seek(0)
-        plots.append(base64.b64encode(img.getvalue()).decode("utf8"))
+        plots["Diensttypen je Person im Gesamtzeitraum"] = base64.b64encode(
+            img.getvalue()
+        ).decode("utf8")
+
+    # create tables
+    tables = {}
+    if len(service_data) > 0:
+        # prepare tables
+        df_table_1 = (
+            service_data.groupby("Name")["Monat"]
+            .value_counts()
+            .unstack()
+            .fillna(0)
+            .transpose()
+            .sort_index(ascending=False)
+        )
+        df_table_2 = (
+            df_table_1.rolling(window=len(df_table_1), min_periods=1)
+            .sum()
+            .astype(int)
+            .sort_index(ascending=False)
+        )
+        tables = {
+            "Monatsübersicht": df_table_1.to_html(
+                classes="table table-striped text-center", index=True
+            ),
+            "Kummulierte Monatsansicht": df_table_2.to_html(
+                classes="table table-striped text-center", index=True
+            ),
+        }
 
     return render_template(
         "ct_service_workload.html",
         error=None,
         event_names=event_names,
         plots=plots,
+        tables=tables,
         from_date=from_date,
         to_date=to_date,
         min_services_count=MIN_SERVICES_COUNT,
@@ -522,6 +561,6 @@ def ct_service_workload():
         available_service_categories=available_service_categories,
         available_service_types_by_category=available_service_types_by_category,
         selected_service_types=selected_service_types,
-        available_persons = available_persons,
-        selected_persons = selected_persons,
+        available_persons=available_persons,
+        selected_persons=selected_persons,
     )
