@@ -42,7 +42,7 @@ if "VERSION" in os.environ.keys():
     config["VERSION"] = os.environ["VERSION"]
 
 app.config.update(config)
-locale.setlocale(locale.LC_TIME, "de_DE")
+locale.setlocale(locale.LC_TIME, "de_DE.UTF-8")
 
 Session(app)
 

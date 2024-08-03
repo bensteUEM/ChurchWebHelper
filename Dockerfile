@@ -1,5 +1,5 @@
 # For more information, please refer to https://aka.ms/vscode-docker-python
-FROM python:3.10
+FROM python:3.12
 
 EXPOSE 5000
 
@@ -14,6 +14,18 @@ ENV \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_NO_INTERACTION=1
+
+
+# Install locales package and generate the specified locale
+RUN apt-get update && \
+    apt-get install -y locales && \
+    sed -i -e 's/# de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales
+
+# Set the locale environment variables
+ENV LANG=de_DE.UTF-8
+ENV LANGUAGE=de_DE:de
+ENV LC_ALL=de_DE.UTF-8
 
 # Update pip
 RUN pip install --upgrade pip
