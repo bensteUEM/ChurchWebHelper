@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+
+<body>
+  {% include 'error.html' %}
+  {% include 'navbar.html' %}
+  <div class="container text-left">
+    {% if not error %}
+    {% for key, value in data.items() %}
+    <p class="font-weight-bold"><strong>{{ key }}</strong></p>
+    {% for appointment in value %}
+    <p class="MsoBodyText2">
+      {{ appointment.time }} Uhr {{ appointment.caption }}
+      {% if appointment.persons is not none %}
+      ({{ appointment.persons }})
+      {% endif %}
+    </p>
+    {% endfor %}
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% if not hide_menu %}
+  <hr>
+  <div class="container my-4">
+    <div class="row">
+      <div class="col-12">
+        <h3 class="mb-3">List of Default Params</h3>
+        <p>Feel free to adjust this view using URL GET params:</p>
+        <p><code>URL?PARAM=value</code></p>
+        <p><code>URL?PARAM1=value&PARAM2=value</code></p>
+        
+      </div>
+    </div>
+    <div class="row">
+      <p class="mt-4">Sample for available params are:</p>
+      <div class="col-auto mb-2"><code>calendar_id=2</code></div>
+      <div class="col-auto mb-2"><code>special_names=72</code></div>
+      <div class="col-auto mb-2"><code>days=14</code></div>
+      <div class="col-auto mb-2"><code>hide_menu=True</code></div>
+      <div class="col-auto mb-2"><code>services=1,2</code></div>
+    </div>
+  </div>
+  {% endif %}
+</body>
+
+</html>
