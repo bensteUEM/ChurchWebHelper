@@ -1,3 +1,4 @@
+{% if not hide_menu %}
 <div class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
   <a class="navbar-brand" href="/">ChurchWebHelper</a>
   <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
@@ -10,7 +11,7 @@
         <a class="nav-link {% if request.path == '/communi/events' %}{% endif %}" aria-current="page" href="/communi/events">Communi</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/ct_calendar_appointments' %}{% endif %}" aria-current="page" href="/ct/calendar_appointments">CT Calendar Appointments</a>
+        <a class="nav-link {% if request.path == '/ct_calendar_appointments' %}{% endif %}" aria-current="page" href="/ct/calendar_appointments?{{calendar_appointments_params}}">CT Calendar Appointments</a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if request.path == '/test' %}{% endif %}" aria-current="page" href="/test">Test</a>
@@ -31,3 +32,4 @@
     </ul>
   </div>
 </div>
+{% endif %}

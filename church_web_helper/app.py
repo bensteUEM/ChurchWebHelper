@@ -1,3 +1,4 @@
+import ast
 import logging
 import locale
 import os
@@ -9,6 +10,7 @@ from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from communi_api.communi_api import CommuniApi
 from communi_api.churchToolsActions import delete_event_chats, create_event_chats, get_x_day_event_ids, generate_group_name_for_event
 from flask_session import Session
+import urllib
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -242,7 +244,7 @@ def events():
         return render_template('main.html', error=error)
 
 
-@app.route('/ct/calendar_appointments')
+@app.route("/ct/calendar_appointments")
 def ct_calendar_appointments():
     """
     page which can be used to display ChurchTools calendar appointments for IFrame use
@@ -251,61 +253,90 @@ def ct_calendar_appointments():
     Use optional get param services to specify a , separated list of service IDs to include
     use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using ,
     """
-    calendar_id = request.args.get('calendar_id')
-    days = request.args.get('days')
-    if requested_services := request.args.get('services') is not None:
-        requested_services = request.args.get('services').split(',')
-        requested_services = [int(num) for num in requested_services]
-    else:
-        requested_services = None
+    # default params if not specified
+    DEFAULT_CALENDAR_ID = 2
+    DEFAULT_DAYS = 14
+    DEFAULT_SERVICE_ID = [1]
+    HIDE_MENU = False
 
-    special_name_calendar_ids = request.args.get('special_name')
+    calendar_id = request.args.get("calendar_id")
+    days = request.args.get("days")
+    if "hide_menu" in request.args:
+        hide_menu = ast.literal_eval(request.args.get("hide_menu"))
+
+    if services := request.args.get("services"):
+        services = request.args.get("services").split(",")
+        services = [int(num) for num in services]
+
+    if not calendar_id or not days or not services:  # set a default
+        calendar_id = DEFAULT_CALENDAR_ID
+        days = DEFAULT_DAYS
+        services = DEFAULT_SERVICE_ID
+        hide_menu = HIDE_MENU
+
+    calendar_appointments_params = urllib.parse.urlencode(
+        {"calendar_id": calendar_id, "days": days, "hide_menu": hide_menu}
+    )
+    calendar_appointments_params += "&services=" + ",".join(
+        [str(service) for service in services]
+    )
+
+    special_name_calendar_ids = request.args.get("special_name")
     if special_name_calendar_ids is not None:
-        special_name_calendar_ids = request.args.get('special_name').split(',')
-        special_name_calendar_ids = [int(num)
-                                     for num in special_name_calendar_ids]
-
-    if calendar_id is None or days is None:
-        error = 'please specify calendar_id and days as get param'
-        return render_template(
-            'ct_calendar_appointments.html', error=error, data=None)
+        special_name_calendar_ids = request.args.get("special_name").split(",")
+        special_name_calendar_ids = [int(num) for num in special_name_calendar_ids]
 
     calendar_ids = [int(calendar_id)]
     from_ = datetime.today()
     to_ = from_ + timedelta(days=int(days))
 
-    appointments = session['ct_api'].get_calendar_appointments(
-        calendar_ids=calendar_ids, from_=from_, to_=to_)
+    appointments = session["ct_api"].get_calendar_appointments(
+        calendar_ids=calendar_ids, from_=from_, to_=to_
+    )
 
     # building a dict with day as key
     data = {}
-    format_code = '%Y-%m-%dT%H:%M:%S%z'
+    format_code = "%Y-%m-%dT%H:%M:%S%z"
+
+    if not appointments:
+        error = "please specify different calendar_id and days as get param"
+        return render_template(
+            "ct_calendar_appointments.html",
+            error=error,
+            data=None,
+            calendar_appointments_default_params=calendar_appointments_params,
+        )
 
     for appointment in appointments:
-        caption = appointment['caption']
-        date = datetime.strptime(
-            appointment['startDate'], format_code)
+        caption = appointment["caption"]
+        date = datetime.strptime(appointment["startDate"], format_code)
 
         day = date.astimezone().strftime("%A %e.%m.%Y")
 
         # Check if special name is requested with calendar IDs
         if isinstance(special_name_calendar_ids, list):
-            special_names = session['ct_api'].get_calendar_appointments(
+            special_names = session["ct_api"].get_calendar_appointments(
                 calendar_ids=special_name_calendar_ids,
-                from_=date, to_=date + timedelta(days=1))
+                from_=date,
+                to_=date + timedelta(days=1),
+            )
             if special_names is not None:
                 if len(special_names) > 0:
-                    special_name = special_names[0]['caption']
-                    day = f'{day} ({special_name})'
+                    special_name = special_names[0]["caption"]
+                    day = f"{day} ({special_name})"
 
         time = date.astimezone().strftime("%H:%M")
 
-        if requested_services is not None:
-            event = session['ct_api'].get_event_by_calendar_appointment(
-                appointment['id'], date)
-            available_services = event['eventServices']
+        if services is not None:
+            event = session["ct_api"].get_event_by_calendar_appointment(
+                appointment["id"], date
+            )
+            available_services = event["eventServices"]
             persons = [
-                service['name'] for service in available_services if service['serviceId'] in requested_services]
+                service["name"]
+                for service in available_services
+                if service["serviceId"] in services
+            ]
             persons = [person for person in persons if person is not None]
             if len(persons) > 0:
                 persons = ", ".join(persons)
@@ -317,8 +348,11 @@ def ct_calendar_appointments():
         if day not in data.keys():
             data[day] = []
 
-        data[day].append(
-            {'time': time, 'caption': caption, 'persons': persons})
+        data[day].append({"time": time, "caption": caption, "persons": persons})
 
     return render_template(
-        'ct_calendar_appointments.html', data=data)
+        "ct_calendar_appointments.html",
+        data=data,
+        calendar_appointments_params=calendar_appointments_params,
+        hide_menu = hide_menu,
+    )
