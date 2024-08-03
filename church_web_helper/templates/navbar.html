@@ -1,0 +1,46 @@
+{% if not hide_menu %}
+<div class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
+  <a class="navbar-brand" href="/">ChurchWebHelper</a>
+  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+    aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span
+      class="navbar-toggler-icon"></span></button>
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">
+    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == '/events' %}{% endif %}" aria-current="page" href="/events">Events
+          Download</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == '/communi/events' %}{% endif %}" aria-current="page"
+          href="/communi/events">Communi</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == '/ct_calendar_appointments' %}{% endif %}" aria-current="page"
+          href="/ct/calendar_appointments?{{calendar_appointments_params}}">CT Calendar Appointments</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == '/ct_service_workload' %}{% endif %}" aria-current="page"
+          href="/ct/service_workload">CT Service Workload</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == '/test' %}{% endif %}" aria-current="page" href="/test">Test</a>
+      </li>
+    </ul>
+    <ul class="navbar-nav ml-auto">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Logins</a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/login_churchtools' %}{% endif %}" aria-current="page"
+              href="/login_churchtools">ChurchTools Login</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/login_communi' %}{% endif %}" aria-current="page"
+              href="/login_communi">Communi Login</a>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</div>
+{% endif %}
