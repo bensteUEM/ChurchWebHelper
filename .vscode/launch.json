@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "ChurchWebHelper (local)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "church_web_helper",
       "cwd": "${workspaceFolder}",
@@ -16,7 +16,6 @@
         "PYTHONUNBUFFERED": "1",
         "CT_DOMAIN": "https://elkw1610.krz.tools",
         "COMMUNI_SERVER": "https://api.communiapp.de/rest",
-        "VERSION": "VS Code Launch config w/o version"
       },
       "args": [
         "run",

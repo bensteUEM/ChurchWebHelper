@@ -15,9 +15,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v4.6.1
+        with:
+          python-version: 3.x
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+          poetry config virtualenvs.create false  # Skip creating a virtual environment
+        env:
+          POETRY_HOME: ${{ github.workspace }}/.poetry
+  
+      - name: Install project dependencies
+        run: |
+          poetry install
+        env:
+          POETRY_HOME: ${{ github.workspace }}/.poetry
+      
       - name: Version from Python
         run:  echo "VERSION=$(python3 ./version.py)" >> $GITHUB_ENV
-
+        
       - name: SHA_short
         run:  echo "GITHUB_SHA_SHORT=$(echo $GITHUB_SHA | cut -c 1-6)" >> $GITHUB_ENV
 

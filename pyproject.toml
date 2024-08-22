@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "church-web-helper"
-version = "1.6.1"
+version = "1.6.2"
 description = "A python package to make use of ChurchTools API and Communi API with a docker packaged WebUI"
 authors = [
     "bensteUEM",
@@ -23,6 +23,7 @@ gunicorn = "^22.0.0"
 python-dotenv = "^1.0.0"
 matplotlib = "^3.9.1"
 pandas = "^2.2.2"
+toml = "^0.10.2"
 
 [tool.poetry.dependencies.churchtools-api]
 git = "https://github.com/bensteUEM/ChurchToolsAPI.git"

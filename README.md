@@ -23,6 +23,13 @@ version.py is used to define the version number used by any automation
  'Docker Compose Up' is using docker-compose.yml and will start a production server including the current version number
  'Docker Compose Debug Up' composes a docker container for debugging also including the version number
 
+### nice2know for debugging local docker containers
+1. make sure /var/run/docker.sock has group "docker" with rw permissions and user is assigned to group docker
+2. docker container IP != local IP - might wanna use the following commands to find the correct IP
+ - ```docker container list```
+ - ```docker inspect   -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}  container_name_or_id```
+default could be http://172.18.0.2:5000
+
 ## tasks.json
 does trigger the docker-compose commands used for 2 launch configurations.
 This is also where the respective ENV vars can be changed.

@@ -10,9 +10,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Version from Python
-        run: echo "VERSION=$(python3 ./version.py)" >> $GITHUB_ENV
-
       - name: Set up Python
         uses: actions/setup-python@v4.6.1
         with:
@@ -36,6 +33,9 @@ jobs:
           poetry build
         env:
           POETRY_HOME: ${{ github.workspace }}/.poetry
+      
+      - name: Version from Python
+        run: echo "VERSION=$(python3 ./version.py)" >> $GITHUB_ENV  
 
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0

@@ -23,6 +23,8 @@ from flask_session import Session
 from dateutil.relativedelta import relativedelta
 import urllib
 
+import toml
+
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
 
@@ -40,6 +42,10 @@ else:
 
 if "VERSION" in os.environ.keys():
     config["VERSION"] = os.environ["VERSION"]
+else:
+    with open("pyproject.toml", "r") as f:
+        pyproject_data = toml.load(f)
+    config["VERSION"] = pyproject_data["tool"]["poetry"]["version"]
 
 app.config.update(config)
 locale.setlocale(locale.LC_TIME, "de_DE.UTF-8")
@@ -54,15 +60,23 @@ def index():
 
 @app.before_request
 def check_session():
-    if request.endpoint != "login":
-        if "ct_api" not in session:
-            return redirect(url_for("login"))
+    """Session variable should contain ct_api and communi_api.
+    If not a redirect to respective login pages should be executed
+    """
+    if request.endpoint != "login_ct" and request.endpoint != "login_communi": 
+        #Check CT Login
+        if not session.get("ct_api"):
+            return redirect(url_for("login_ct"))
         elif not session["ct_api"].who_am_i():
-            return redirect(url_for("login"))
+            return redirect(url_for("login_ct"))
+        #Check Communi Login
+        if not session.get("communi_api"):
+            return redirect(url_for("login_communi"))
+        elif not session["communi_api"].who_am_i():
+            return redirect(url_for("login_communi"))
 
-
-@app.route("/login_churchtools", methods=["GET", "POST"])
-def login():
+@app.route("/ct/login", methods=["GET", "POST"])
+def login_ct():
     """
     Update login information for CT
     :return:
@@ -91,7 +105,7 @@ def login():
         )
 
 
-@app.route("/login_communi", methods=["GET", "POST"])
+@app.route("/communi/login", methods=["GET", "POST"])
 def login_communi():
     """
     Update login information for Communi Login
