@@ -7,13 +7,17 @@
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
       <li class="nav-item dropdown">
-        <div class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           Downloads</a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li class="nav-item">
               <a class="nav-link" {% if request.path==url_for('download_events') %}aria-current="page" {% endif %}
                 href="{{url_for('download_events')}}">Ablauf als Word</a>
             </li>
+            <li class="nav-item"></li>
+            <a class="nav-link" {% if request.path==url_for('download_plan_months') %}aria-current="page" {% endif %}
+              href="{{url_for('download_plan_months')}}">Monatsplan</a>
+      </li>
     </ul>
     </li>
     <li class="nav-item">

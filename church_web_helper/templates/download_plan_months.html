@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+
+<body>
+    {% include 'error.html' %}
+    {% include 'navbar.html' %}
+    <div class="container">
+        <div class="container-fluid">
+            <form action="{{ url_for('download_plan_months') }}" class="form-floating mb-3" method="POST">
+                <h2>Filterung</h2>
+                <div class="row">
+                    <div class="col-auto">
+                        <label for="selected_calendars" class="form-label">Kalender</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_calendars"
+                            size="10" name="selected_calendars">
+                            {% for calendar_id, calendar_name in available_calendars.items() %}
+                            <option {% if calendar_id in selected_calendars %} selected{% endif %}
+                                value="{{calendar_id}}">
+                                {{calendar_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <div class="row">
+                            <label for="from_date" class="form-label">Von</label>
+                            <input type="date" id="from_date" class="form-control" name="from_date"
+                                value="{{ from_date.strftime('%Y-%m-%d') }}">
+                        </div>
+                        <div class="row">
+                            <label for="to_date" class="form-label">Bis</label>
+                            <input type="date" id="to_date" class="form-control" name="to_date"
+                                value="{{ to_date.strftime('%Y-%m-%d') }}">
+                        </div>
+                    </div>
+                </div>
+                <input type="submit" name="action" class="btn btn-secondary" value="Auswahl anpassen">
+                <input type="submit" name="action" class="btn btn-primary" value="DOCx Document Download"> </br>
+            </form>
+        </div>
+        <h2>Event Details</h2>
+        <div class="container-fluid">
+            {% for event in events %}
+            <ul>
+                {% for key, value in event.items() %}
+                <li>{{key}}:{{value}}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+        </form>
+    </div>
+</body>
+
+</html>

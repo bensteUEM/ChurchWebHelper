@@ -264,11 +264,77 @@ def download_events():
             os.remove(filename)
             return response
 
-        elif "submit_communi" in request.form.keys():
-            error = "Communi Group update not yet implemented"
         else:
             error = "Requested function not detected in request"
         return render_template("main.html", error=error)
+
+
+@app.route("/download/plan_months", methods=["GET", "POST"])
+def download_plan_months():
+    events = session[
+        "ct_api"
+    ].get_events()  # TODO needs calendar entries linked with event #6
+
+    available_calendars = {
+        cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
+    }
+
+    if request.method == "GET":
+        selected_calendars = available_calendars.keys()
+
+        session["serviceGroups"] = session["ct_api"].get_event_masterdata(
+            type="serviceGroups", returnAsDict=True
+        )
+
+        DEFAULT_TIMEFRAME_MONTHS = 6
+        from_date = datetime.combine(datetime.now().date(), time.min)
+        to_date = datetime.combine(
+            from_date + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS), time.max
+        )
+
+        return render_template(
+            "download_plan_months.html",
+            events=events[:1],
+            available_calendars=available_calendars,
+            selected_calendars=selected_calendars,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    elif request.method == "POST":
+        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
+        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+
+        selected_calendars = [
+            int(calendar_id)
+            for calendar_id in request.form.getlist("selected_calendars")
+        ]
+        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
+        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+
+        action = request.form.get("action")
+        if action == "Auswahl anpassen":
+            return render_template(
+                "download_plan_months.html",
+                events=events[:1],
+                available_calendars=available_calendars,
+                selected_calendars=selected_calendars,
+                from_date=from_date,
+                to_date=to_date,
+            )
+
+        elif action == "DOCx Document Download":
+            """
+            document = None #todo GET DOCX
+            filename = "NAME" + ".docx"
+            document.save(filename)
+            response = send_file(
+                path_or_file=os.getcwd() + "/" + filename, as_attachment=True
+            )
+            os.remove(filename)
+            return response
+            """
+            error = "Not implemented yet - see #16"
+            return render_template("download_plan_months.html", error=error)
 
 
 @app.route("/ct/calendar_appointments")
