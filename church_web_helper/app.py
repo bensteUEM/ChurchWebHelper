@@ -63,17 +63,18 @@ def check_session():
     """Session variable should contain ct_api and communi_api.
     If not a redirect to respective login pages should be executed
     """
-    if request.endpoint != "login_ct" and request.endpoint != "login_communi": 
-        #Check CT Login
+    if request.endpoint != "login_ct" and request.endpoint != "login_communi":
+        # Check CT Login
         if not session.get("ct_api"):
             return redirect(url_for("login_ct"))
         elif not session["ct_api"].who_am_i():
             return redirect(url_for("login_ct"))
-        #Check Communi Login
+        # Check Communi Login
         if not session.get("communi_api"):
             return redirect(url_for("login_communi"))
         elif not session["communi_api"].who_am_i():
             return redirect(url_for("login_communi"))
+
 
 @app.route("/ct/login", methods=["GET", "POST"])
 def login_ct():
