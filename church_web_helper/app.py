@@ -286,10 +286,20 @@ def download_plan_months():
             type="serviceGroups", returnAsDict=True
         )
 
-        DEFAULT_TIMEFRAME_MONTHS = 6
-        from_date = datetime.combine(datetime.now().date(), time.min)
+        DEFAULT_TIMEFRAME_MONTHS = 1
+
+        from_date = datetime.now().date()
+        if from_date.month == 12:
+            from_date = datetime(from_date.year + 1, 1, 1)
+        else:
+            from_date = datetime(from_date.year, from_date.month + 1, 1)
+        from_date = datetime.combine(from_date, time.min)
+
         to_date = datetime.combine(
-            from_date + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS), time.max
+            from_date
+            + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS)
+            - relativedelta(days=1),
+            time.max,
         )
 
         return render_template(
