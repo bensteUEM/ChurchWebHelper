@@ -22,6 +22,17 @@
                         </select>
                     </div>
                     <div class="col-auto">
+                        <label for="selected_resources" class="form-label">Resourcen</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_resources"
+                            size="10" name="selected_resources">
+                            {% for resource_id, resource_name in available_resources.items() %}
+                            <option {% if resource_id in selected_resources %} selected{% endif %}
+                                value="{{resource_id}}">
+                                {{resource_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
                         <div class="row">
                             <label for="from_date" class="form-label">Von</label>
                             <input type="date" id="from_date" class="form-control" name="from_date"

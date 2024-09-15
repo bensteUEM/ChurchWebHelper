@@ -280,12 +280,16 @@ def download_plan_months():
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
 
+    available_resources = {"0": "Not implemented see #16"}
+    """
+    available_resources = {
+        resource["id"]: resource["name"] for resource in session["ct_api"].get_resources()
+    }
+    """
+
     if request.method == "GET":
         selected_calendars = available_calendars.keys()
-
-        session["serviceGroups"] = session["ct_api"].get_event_masterdata(
-            type="serviceGroups", returnAsDict=True
-        )
+        selected_resources = available_resources.keys()
 
         DEFAULT_TIMEFRAME_MONTHS = 1
 
@@ -308,6 +312,8 @@ def download_plan_months():
             events=events[:1],
             available_calendars=available_calendars,
             selected_calendars=selected_calendars,
+            available_resources=available_resources,
+            selected_resources=selected_resources,
             from_date=from_date,
             to_date=to_date,
         )
@@ -319,6 +325,11 @@ def download_plan_months():
             int(calendar_id)
             for calendar_id in request.form.getlist("selected_calendars")
         ]
+        selected_resources = [
+            int(resource_id)
+            for resource_id in request.form.getlist("selected_resources")
+        ]
+
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
         to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
 
@@ -329,6 +340,8 @@ def download_plan_months():
                 events=events[:1],
                 available_calendars=available_calendars,
                 selected_calendars=selected_calendars,
+                available_resources=available_resources,
+                selected_resources=selected_resources,
                 from_date=from_date,
                 to_date=to_date,
             )
