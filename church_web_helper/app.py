@@ -204,8 +204,8 @@ def communi_events():
             redirect("/communi/events")
 
 
-@app.route("/events", methods=["GET", "POST"])
-def events():
+@app.route("/download/events", methods=["GET", "POST"])
+def download_events():
     if request.method == "GET":
         session["serviceGroups"] = session["ct_api"].get_event_masterdata(
             type="serviceGroups", returnAsDict=True
@@ -234,14 +234,14 @@ def events():
         logging.debug("{} Events kept because schedule exists".format(len(events_temp)))
 
         return render_template(
-            "events.html",
+            "download_events.html",
             ct_domain=app.config["CT_DOMAIN"],
             event_choices=event_choices,
             service_groups=session["serviceGroups"],
         )
     elif request.method == "POST":
         if "event_id" not in request.form.keys():
-            redirect("/events")
+            return redirect("/download/events")
         event_id = int(request.form["event_id"])
         if "submit_docx" in request.form.keys():
             event = session["events"][event_id]

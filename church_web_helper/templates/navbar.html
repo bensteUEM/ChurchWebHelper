@@ -6,24 +6,30 @@
       class="navbar-toggler-icon"></span></button>
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-      <li class="nav-item">
-        <a class="nav-link {% if request.path == '/events' %}{% endif %}" aria-current="page" href="/events">Events
-          Download</a>
+      <li class="nav-item dropdown">
+        <div class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          Downloads</a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li class="nav-item">
+              <a class="nav-link" {% if request.path=='/downloads/events' %}aria-current="page" {% endif %}
+                href="/download/events">Events Download</a>
+            </li>
+          </ul>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/communi/events' %}{% endif %}" aria-current="page"
+        <a class="nav-link" {% if request.path=='/communi/events' %}aria-current="page" {% endif %}
           href="/communi/events">Communi</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/ct_calendar_appointments' %}{% endif %}" aria-current="page"
+        <a class="nav-link" {% if request.path=='/ct_calendar_appointments' %} aria-current="page" {% endif %}
           href="/ct/calendar_appointments?{{calendar_appointments_params}}">CT Calendar Appointments</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/ct_service_workload' %}{% endif %}" aria-current="page"
+        <a class="nav-link" {% if request.path=='/ct_service_workload' %}aria-current="page" {% endif %}
           href="/ct/service_workload">CT Service Workload</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/test' %}{% endif %}" aria-current="page" href="/test">Test</a>
+        <a class="nav-link" {% if request.path=='/test' %} aria-current="page" {% endif %} href="/test">Test</a>
       </li>
     </ul>
     <ul class="navbar-nav ml-auto">
@@ -31,11 +37,11 @@
         <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Logins</a>
         <ul class="dropdown-menu dropdown-menu-end">
           <li class="nav-item">
-            <a class="nav-link {% if request.path == '/ct/login' %}{% endif %}" aria-current="page"
+            <a class="nav-link" {% if request.path=='/ct/login' %} aria-current="page" {% endif %}
               href="/ct/login">ChurchTools Login</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.path == '/communi/login' %}{% endif %}" aria-current="page"
+            <a class="nav-link" {% if request.path=='/communi/login' %}aria-current="page" {% endif %}
               href="/communi/login">Communi Login</a>
           </li>
         </ul>

@@ -8,7 +8,7 @@
     {% include 'error.html' %}
     <h1>Next Events:</h1>
     Select any event and respective options in order to execute an event specifc action
-    <form action="/events" method="POST">
+    <form action="/download/events" method="POST">
         <div class="form-group">
             {% for event in event_choices %}
             <input class="form-check-input" type="radio" id="event_id" name="event_id" value="{{event.id}}">
@@ -28,8 +28,6 @@
         </div>
 
         <input type="submit" name="submit_docx" class="btn btn-primary" value="DOCx Document Download"> </br>
-        <input type="submit" name="submit_chat_update" class="btn btn-secondary" value="Update Communi group">
-        <input type="submit" name="submit_chat_delete" class="btn btn-secondary" value="Delete Communi group"> </br>
     </form>
 </div>
 </body>
