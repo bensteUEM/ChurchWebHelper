@@ -49,17 +49,11 @@
                 <input type="submit" name="action" class="btn btn-primary" value="DOCx Document Download"> </br>
             </form>
         </div>
-        <h2>Event Details</h2>
-        <div class="container-fluid">
-            {% for event in events %}
-            <ul>
-                {% for key, value in event.items() %}
-                <li>{{key}}:{{value}}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endfor %}
-        </form>
+        {% if data %}
+        <h2>Applicable Calendar Entry data</h2>
+        {{data | safe}}
+        
+        {% endif %}
     </div>
 </body>
 

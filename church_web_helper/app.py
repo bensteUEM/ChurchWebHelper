@@ -4,7 +4,8 @@ import io
 import logging
 import locale
 import os
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
+import random
 import re
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -23,7 +24,13 @@ from flask_session import Session
 from dateutil.relativedelta import relativedelta
 import urllib
 
+import pytz
 import toml
+
+from church_web_helper.helper import (
+    extract_relevant_calendar_appointment_shortname,
+    get_special_day_name,
+)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -272,10 +279,6 @@ def download_events():
 
 @app.route("/download/plan_months", methods=["GET", "POST"])
 def download_plan_months():
-    events = session[
-        "ct_api"
-    ].get_events()  # TODO needs calendar entries linked with event #6
-
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
@@ -309,7 +312,7 @@ def download_plan_months():
 
         return render_template(
             "download_plan_months.html",
-            events=events[:1],
+            data=None,
             available_calendars=available_calendars,
             selected_calendars=selected_calendars,
             available_resources=available_resources,
@@ -333,11 +336,81 @@ def download_plan_months():
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
         to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
 
+        calendar_appointments = session["ct_api"].get_calendar_appointments(
+            calendar_ids=selected_calendars, from_=from_date, to_=to_date
+        )
+
+        data = {}
+        for item in calendar_appointments:
+            id = item["id"]
+
+            # startDate casting
+            if len(item["startDate"]) > 10:
+                item["startDate"] = (
+                    datetime.strptime(item["startDate"], "%Y-%m-%dT%H:%M:%Sz")
+                    .replace(tzinfo=pytz.UTC)
+                    .astimezone()
+                )
+            elif len(item["startDate"]) == 10:
+                item["startDate"] = datetime.strptime(item["startDate"], "%Y-%m-%d")
+
+            # Simple attributes
+            SPECIAL_DAY_CALENDAR_ID = [52, 72]
+            data[id] = {
+                "caption": item["caption"],
+                "startDate": item["startDate"],
+                "shortName": extract_relevant_calendar_appointment_shortname(
+                    item["caption"]
+                ),
+                "shortDay": item["startDate"].strftime("%d.%m")
+                + " "
+                + get_special_day_name(
+                    ct_api=session["ct_api"],
+                    special_name_calendar_ids=SPECIAL_DAY_CALENDAR_ID,
+                    date=item["startDate"],
+                ),
+                "shortTime": item["startDate"].strftime("%H.%S")
+                if item["startDate"].hour > 0
+                else "Ganztag",
+            }
+
+            # Predigt
+            data[id]["person"] = (
+                "PERSON #16"  # TODO #16 person is not yet identified and a placeholder
+            )
+
+            # location
+            data[id]["location"] = random.randint(
+                1, 4
+            )  # TODO #16 location is not yet available and assigned at random
+            replacement = {
+                "1": "MAKI Test",
+                "2": "FTal Test",
+                "3": "TBach Test",
+                "4": "GH Test",
+            }
+            data[id]["location"] = replacement[str(data[id]["location"])]
+
+            # combine text for debug output
+            data[id]["text"] = (
+                f"{data[id]["shortTime"]} {data[id]["shortName"]} ({data[id]["person"]})"
+            )
+            
+        df = (
+            pd.DataFrame(data)
+            .transpose()
+            .groupby(["shortDay", "location"])
+            .agg(list)
+            .reset_index()
+            .pivot(index="shortDay", columns="location", values="text")
+            .fillna("")
+        )
+
         action = request.form.get("action")
         if action == "Auswahl anpassen":
             return render_template(
                 "download_plan_months.html",
-                events=events[:1],
+                data=df.to_html(classes="table table-striped text-center", index=True),
                 available_calendars=available_calendars,
                 selected_calendars=selected_calendars,
                 available_resources=available_resources,
@@ -416,7 +489,7 @@ def ct_calendar_appointments():
 
     calendar_ids = [int(calendar_id)]
     from_ = datetime.today()
-    to_ = from_ + timedelta(days=int(days))
+    to_ = from_ + relativedelta(days=int(days))
 
     appointments = session["ct_api"].get_calendar_appointments(
         calendar_ids=calendar_ids, from_=from_, to_=to_
@@ -446,15 +519,18 @@ def ct_calendar_appointments():
             isinstance(special_name_calendar_ids, list)
             and len(special_name_calendar_ids) > 0
         ):
-            special_names = session["ct_api"].get_calendar_appointments(
+            special_name = get_special_day_name(
+                ct_api=session["ct_api"],
+                special_name_calendar_ids=special_name_calendar_ids,
+                date=date,
+            )
+            session["ct_api"].get_calendar_appointments(
                 calendar_ids=special_name_calendar_ids,
                 from_=date,
-                to_=date + timedelta(days=1),
+                to_=date + relativedelta(days=1),
             )
-            if special_names is not None:
-                if len(special_names) > 0:
-                    special_name = special_names[0]["caption"]
-                    day = f"{day} ({special_name})"
+            if special_name:
+                day = f"{day} {special_name}"
 
         time = date.astimezone().strftime("%H:%M")
 
