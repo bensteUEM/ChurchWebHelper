@@ -409,6 +409,8 @@ def download_plan_months():
             )
             .reorder_levels([1, 0], axis=1)
             .sort_index(axis=1)
+            .reset_index()
+            .drop(columns="startDate")
         )
 
         action = request.form.get("action")

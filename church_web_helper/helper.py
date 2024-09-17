@@ -3,11 +3,13 @@
 It is used to outsource parts which don't need to be part of app.py
 """
 
+from collections import OrderedDict
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from dateutil.relativedelta import relativedelta
 
 from datetime import datetime
 import docx
+from docx.shared import Pt
 import pandas as pd
 
 
@@ -104,19 +106,60 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     heading = f"Unsere Gottesdienste im {from_date.strftime("%B %Y")}"
     document.add_heading(heading)
 
-    locations = set([item[0] for item in data.columns])
+    locations = set([item[0] for item in data.columns[1:]])
 
     table = document.add_table(rows=1, cols=len(locations) + 1)
     hdr_cells = table.rows[0].cells
 
     for column_no, content in enumerate(locations):
         hdr_cells[column_no + 1].text = content
+        for paragraph in hdr_cells[column_no + 1].paragraphs:
+            for run in paragraph.runs:
+                run.bold = True
+                run.font.size = Pt(15)
+                run.font.name = "Arial Narrow"
 
-    for index, row in data.iterrows():
+    shortDays = OrderedDict(data["shortDay"]).values()
+
+    for shortDay in shortDays:
         row_cells = table.add_row().cells
-        row_cells[0].text = row.name[1]
+        row_cells[0].text = shortDay
+        for paragraph in row_cells[0].paragraphs:
+            for run in paragraph.runs:
+                run.bold = True
+                run.font.size = Pt(15)
+                run.font.name = "Arial Narrow"
         for column_no, location in enumerate(locations):
-            row_cells[1 + column_no].text = str(row[location])
+            relevant_row = data[data["shortDay"] == shortDay][location].iloc[0]
+            # row_cells[1 + column_no].text = str(row[location])
+            for entry_index in range(1 - 1, len(relevant_row["shortTime"])):
+                item_head_para = row_cells[1 + column_no].add_paragraph("")
+                if relevant_row["shortTime"][
+                    entry_index
+                ]:  # TODO #16 something is off here ... same time for all on web export
+                    item_head_para.add_run(relevant_row["shortTime"][entry_index])
+                if relevant_row["shortName"][
+                    entry_index
+                ]:  # should be single relevant_row only but getting list
+                    item_head_para.add_run(" " + relevant_row["shortName"][entry_index])
+                # Apply bold formatting nad set font size and font family
+                for run in item_head_para.runs:
+                    run.bold = True
+                    run.font.size = Pt(15)
+                    run.font.name = "Arial Narrow"
+                # TODO #16 change to runs instead of paragraphs...
+                item_body_para = row_cells[1 + column_no].add_paragraph("")
+                if relevant_row["specialService"][entry_index]:
+                    item_body_para.add_run(
+                        " " + relevant_row["specialService"][entry_index]
+                    )
+                if relevant_row["predigt"][entry_index]:
+                    item_body_para.add_run(f" ({relevant_row["predigt"][entry_index]})")
+
+                # Apply font size and font family
+                for run in item_body_para.runs:
+                    run.font.size = Pt(15)
+                    run.font.name = "Arial Narrow"
 
     FOOTER_TEXT = "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: Juliane Haas, Tel: 604467 oder Bärbel Vögele, Tel.:121136"
     document.add_paragraph(FOOTER_TEXT)
