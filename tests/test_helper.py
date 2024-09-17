@@ -68,33 +68,70 @@ class Test_Helper:
         )
 
     def test_get_plan_months_docx(self):
-        sample_data = pd.DataFrame(
+        df_sample = pd.DataFrame(
             {
-                "shortDay": ["1.1", "23.1", "23.1", "1.1"],
+                "shortDay": ["3.2", "23.1", "23.1", "3.2"],
+                "startDate": [
+                    datetime(year=2024, month=2, day=3),
+                    datetime(year=2024, month=1, day=23),
+                    datetime(year=2024, month=1, day=23),
+                    datetime(year=2024, month=2, day=3),
+                ],
                 "location": ["A1", "A2", "A2", "A3"],
-                "text": ["test1", "test2", "test3", "test4"],
+                "shortTime": ["08:00", "10:00", "12:00", "9:00"],
+                "predigt": ["P1", "P2", "P1", "P2"],
+                "shortName": ["mit Abendmahl", None, None, None],
+                "specialService": [None, "mit Kirchenchor", None, None],
             }
         )
-        sample_data = (
-            sample_data.sort_values("text")
-            .groupby(["shortDay", "location"])
-            .agg(list)
-            .reset_index()
-            .pivot(index="shortDay", columns="location", values="text")
-            .fillna("")
+        df_data = (
+            df_sample.pivot_table(
+                values=["shortTime", "shortName", "predigt", "specialService"],
+                index=["startDate", "shortDay"],
+                columns=["location"],
+                aggfunc=list,
+                fill_value="",
+            )
+            .reorder_levels([1, 0], axis=1)
+            .sort_index(axis=1)
         )
+
         FILENAME = "tests/samples/test_get_plan_months.docx"
         expected_sample = docx.Document(FILENAME)
 
         result = get_plan_months_docx(
-            sample_data, from_date=datetime(year=2024, month=1, day=1)
+            df_data, from_date=datetime(year=2024, month=1, day=1)
         )
 
         assert compare_docx_files(result, expected_sample)
 
 
-def compare_docx_files(document1: docx.Document, document2: docx.Document):
-    """Compare both text and tables of two docx files."""
+def test_compare_docx_files():
+    FILENAME = "tests/samples/test_get_plan_months.docx"
+    FILENAME2 = "tests/samples/test_get_plan_months_other.docx"
+
+    doc1 = docx.Document(FILENAME)
+    doc2 = docx.Document(FILENAME)
+    assert compare_docx_files(doc1, doc2)[0]
+
+    doc3 = docx.Document(FILENAME2)
+    assert not compare_docx_files(doc1, doc3)[0]
+
+
+def compare_docx_files(
+    document1: docx.Document, document2: docx.Document
+) -> (bool, str):
+    """Compare both text and table content of two docx files.
+
+    Args:
+        document1: _description_
+        document2: _description_
+
+    Returns:
+        bool - if is equal
+        text - description of difference
+    """
+
     # Compare text
     text1 = get_docx_text(document1)
     text2 = get_docx_text(document2)

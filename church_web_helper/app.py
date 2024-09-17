@@ -353,7 +353,9 @@ def download_plan_months():
                     .astimezone()
                 )
             elif len(item["startDate"]) == 10:
-                item["startDate"] = datetime.strptime(item["startDate"], "%Y-%m-%d")
+                item["startDate"] = datetime.strptime(
+                    item["startDate"], "%Y-%m-%d"
+                ).astimezone()
 
             # Simple attributes
             SPECIAL_DAY_CALENDAR_ID = [52, 72]
@@ -376,8 +378,12 @@ def download_plan_months():
             }
 
             # Predigt
-            data[id]["person"] = (
+            data[id]["predigt"] = (
                 "PERSON #16"  # TODO #16 person is not yet identified and a placeholder
+            )
+
+            data[id]["specialService"] = (
+                "mit Posaunenchor"  # TODO #16 specialService is not yet identified and a placeholder
             )
 
             # location
@@ -392,27 +398,26 @@ def download_plan_months():
             }
             data[id]["location"] = replacement[str(data[id]["location"])]
 
-            # combine text for debug output
-            data[id]["text"] = (
-                f"{data[id]["shortTime"]} {data[id]["shortName"]} ({data[id]["person"]})"
+        df_raw: pd.DataFrame = pd.DataFrame(data).transpose()
+        df_data = (
+            df_raw.pivot_table(
+                values=["shortTime", "shortName", "predigt", "specialService"],
+                index=["startDate", "shortDay"],
+                columns=["location"],
+                aggfunc=list,
+                fill_value="",
             )
-            
-        df = (
-            pd.DataFrame(data)
-            .transpose()
-            .sort_values("text")
-            .groupby(["shortDay", "location"])
-            .agg(list)
-            .reset_index()
-            .pivot(index="shortDay", columns="location", values="text")
-            .fillna("")
+            .reorder_levels([1, 0], axis=1)
+            .sort_index(axis=1)
         )
 
         action = request.form.get("action")
         if action == "Auswahl anpassen":
             return render_template(
                 "download_plan_months.html",
-                data=df.to_html(classes="table table-striped text-center", index=True),
+                data=df_data.to_html(
+                    classes="table table-striped text-center", index=True
+                ),
                 available_calendars=available_calendars,
                 selected_calendars=selected_calendars,
                 available_resources=available_resources,
@@ -422,7 +427,7 @@ def download_plan_months():
             )
 
         elif action == "DOCx Document Download":
-            document = get_plan_months_docx(df,from_date=from_date)
+            document = get_plan_months_docx(df_data, from_date=from_date)
             filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.docx"
             document.save(filename)
             response = send_file(

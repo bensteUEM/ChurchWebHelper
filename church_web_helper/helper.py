@@ -104,16 +104,19 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     heading = f"Unsere Gottesdienste im {from_date.strftime("%B %Y")}"
     document.add_heading(heading)
 
-    table = document.add_table(rows=1, cols=1 + len(data.columns))
+    locations = set([item[0] for item in data.columns])
+
+    table = document.add_table(rows=1, cols=len(locations) + 1)
     hdr_cells = table.rows[0].cells
-    for column_no, content in enumerate(data.columns):
+
+    for column_no, content in enumerate(locations):
         hdr_cells[column_no + 1].text = content
 
     for index, row in data.iterrows():
         row_cells = table.add_row().cells
-        row_cells[0].text = row.name
-        for column_no, content in enumerate(data.columns):
-            row_cells[1 + column_no].text = str(row[content])
+        row_cells[0].text = row.name[1]
+        for column_no, location in enumerate(locations):
+            row_cells[1 + column_no].text = str(row[location])
 
     FOOTER_TEXT = "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: Juliane Haas, Tel: 604467 oder Bärbel Vögele, Tel.:121136"
     document.add_paragraph(FOOTER_TEXT)
