@@ -29,6 +29,7 @@ import toml
 
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
+    get_plan_months_docx,
     get_special_day_name,
 )
 
@@ -399,6 +400,7 @@ def download_plan_months():
         df = (
             pd.DataFrame(data)
             .transpose()
+            .sort_values("text")
             .groupby(["shortDay", "location"])
             .agg(list)
             .reset_index()
@@ -420,18 +422,14 @@ def download_plan_months():
             )
 
         elif action == "DOCx Document Download":
-            """
-            document = None #todo GET DOCX
-            filename = "NAME" + ".docx"
+            document = get_plan_months_docx(df,from_date=from_date)
+            filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.docx"
             document.save(filename)
             response = send_file(
                 path_or_file=os.getcwd() + "/" + filename, as_attachment=True
             )
             os.remove(filename)
             return response
-            """
-            error = "Not implemented yet - see #16"
-            return render_template("download_plan_months.html", error=error)
 
 
 @app.route("/ct/calendar_appointments")
