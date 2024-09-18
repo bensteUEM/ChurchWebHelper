@@ -104,8 +104,15 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     """
 
     document = docx.Document()
+    set_page_margins(document, top=5.71, bottom=1.27, left=2.75, right=0.25)
+    #TODO page Absatz before -1,50 cm; behind -0,25 cm; first row -0,09 cm
     heading = f"Unsere Gottesdienste im {from_date.strftime("%B %Y")}"
-    document.add_heading(heading)
+    paragraph = document.add_heading(heading)
+    for run in paragraph.runs:
+        run.bold = True
+        run.font.name = "ArialNarrow"
+        run.font.size = Pt(32)
+        run.font.color.rgb = RGBColor.from_string("000000")
 
     locations = set([item[0] for item in data.columns[2:]])
 
@@ -237,3 +244,22 @@ def change_font_of_table(table: docx.table) -> None:
                 for run in paragraph.runs:
                     run.font.name = "ArialNarrow"
                     run.font.size = Pt(15)
+
+
+def set_page_margins(doc:docx.Document, top:float, bottom:float, left:float, right:float):
+    """Helper to set document page borders in cm
+
+    Args:
+        doc: the document to change
+        top: border in cm
+        bottom: border in cmon_
+        left: border in cm
+        right: border in cm
+    """
+    section = doc.sections[0]
+
+    # Set the margins
+    section.top_margin = Cm(top)
+    section.bottom_margin = Cm(bottom)
+    section.left_margin = Cm(left)
+    section.right_margin = Cm(right)
