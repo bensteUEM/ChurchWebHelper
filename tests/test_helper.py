@@ -94,7 +94,8 @@ class Test_Helper:
             )
             .reorder_levels([1, 0], axis=1)
             .sort_index(axis=1)
-            .reset_index().drop(columns="startDate")
+            .reset_index()
+            .drop(columns="startDate")
         )
 
         FILENAME = "tests/samples/test_get_plan_months.docx"

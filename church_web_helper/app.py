@@ -28,6 +28,7 @@ import pytz
 import toml
 
 from church_web_helper.helper import (
+    deduplicate_df_index_with_lists,
     extract_relevant_calendar_appointment_shortname,
     get_plan_months_docx,
     get_special_day_name,
@@ -399,7 +400,7 @@ def download_plan_months():
             data[id]["location"] = replacement[str(data[id]["location"])]
 
         df_raw: pd.DataFrame = pd.DataFrame(data).transpose()
-        df_data = (
+        df_data_pivot = (
             df_raw.pivot_table(
                 values=["shortTime", "shortName", "predigt", "specialService"],
                 index=["startDate", "shortDay"],
@@ -412,6 +413,7 @@ def download_plan_months():
             .reset_index()
             .drop(columns="startDate")
         )
+        df_data = deduplicate_df_index_with_lists(df_data_pivot)
 
         action = request.form.get("action")
         if action == "Auswahl anpassen":

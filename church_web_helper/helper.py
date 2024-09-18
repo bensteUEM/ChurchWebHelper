@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from datetime import datetime
 import docx
 from docx.shared import Pt
+import docx.table
 import pandas as pd
 
 
@@ -116,52 +117,118 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
         for paragraph in hdr_cells[column_no + 1].paragraphs:
             for run in paragraph.runs:
                 run.bold = True
-                run.font.size = Pt(15)
-                run.font.name = "Arial Narrow"
 
-    shortDays = OrderedDict(data["shortDay"]).values()
-
-    for shortDay in shortDays:
+    for index, df_row in data.iterrows():
         row_cells = table.add_row().cells
-        row_cells[0].text = shortDay
+        row_cells[0].text = df_row["shortDay"]
         for paragraph in row_cells[0].paragraphs:
             for run in paragraph.runs:
                 run.bold = True
-                run.font.size = Pt(15)
-                run.font.name = "Arial Narrow"
         for column_no, location in enumerate(locations):
-            relevant_row = data[data["shortDay"] == shortDay][location].iloc[0]
-            # row_cells[1 + column_no].text = str(row[location])
-            for entry_index in range(1 - 1, len(relevant_row["shortTime"])):
-                item_head_para = row_cells[1 + column_no].add_paragraph("")
-                if relevant_row["shortTime"][
-                    entry_index
-                ]:  # TODO #16 something is off here ... same time for all on web export
-                    item_head_para.add_run(relevant_row["shortTime"][entry_index])
-                if relevant_row["shortName"][
-                    entry_index
-                ]:  # should be single relevant_row only but getting list
-                    item_head_para.add_run(" " + relevant_row["shortName"][entry_index])
-                # Apply bold formatting nad set font size and font family
-                for run in item_head_para.runs:
-                    run.bold = True
-                    run.font.size = Pt(15)
-                    run.font.name = "Arial Narrow"
-                # TODO #16 change to runs instead of paragraphs...
-                item_body_para = row_cells[1 + column_no].add_paragraph("")
-                if relevant_row["specialService"][entry_index]:
-                    item_body_para.add_run(
-                        " " + relevant_row["specialService"][entry_index]
-                    )
-                if relevant_row["predigt"][entry_index]:
-                    item_body_para.add_run(f" ({relevant_row["predigt"][entry_index]})")
+            generate_event_paragraph(
+                target_cell=row_cells[1 + column_no], relevant_entry=df_row[location]
+            )
 
-                # Apply font size and font family
-                for run in item_body_para.runs:
-                    run.font.size = Pt(15)
-                    run.font.name = "Arial Narrow"
+    change_font_of_table(table=table)
 
     FOOTER_TEXT = "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: Juliane Haas, Tel: 604467 oder Bärbel Vögele, Tel.:121136"
     document.add_paragraph(FOOTER_TEXT)
 
     return document
+
+
+def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
+    """Flattens a df with multiple same index entries to list entries
+
+    Args:
+        df_input: the original dataframe which contains multiple entries for "shortDay" index per column
+
+    Returns:
+        flattened df which has unique shortDay and combined lists in cells
+    """
+
+    shortDays = list(OrderedDict.fromkeys(df_input["shortDay"]).keys())
+    df_output = pd.DataFrame(columns=df_input.columns)
+    for shortDay in shortDays:
+        df_shortDay = df_input[df_input["shortDay"] == shortDay]
+        new_index = len(df_output)
+        df_output.loc[new_index] = [pd.NA] * df_output.shape[1]
+        df_output.iloc[new_index]["shortDay"] = shortDay
+
+        locations = OrderedDict.fromkeys(i[0] for i in df_shortDay.columns[1:])
+        for location in locations:
+            for col in df_shortDay[location]:
+                value_list = []
+                df_non_empty = df_shortDay[location][
+                    ~(
+                        df_shortDay[location].apply(
+                            lambda row: (row == "").all(), axis=1
+                        )
+                    )
+                ]
+                for value in df_non_empty[col]:
+                    if isinstance(value, list):
+                        value_list.extend(value)
+                    else:
+                        value_list.append(value)
+                df_output.loc[new_index, (location, col)] = value_list
+
+    df_output = df_output.fillna("")
+
+    return df_output
+
+
+def generate_event_paragraph(
+    target_cell: docx.table._Cell, relevant_entry: pd.Series
+) -> None:
+    """function which generates the content of one table cell.
+
+    Used with get_plan_months_docx
+    Iterates through all items in relevant row and using the columns to generate the text.
+
+    Args:
+        target_cell: the table cell which should get the content
+        relevant_row: the pd series with list of items in each column
+
+    Returns:
+        None because working inplace
+    """
+    for entry_index in range(1 - 1, len(relevant_entry["shortTime"])):
+        current_paragraph = (
+            target_cell.paragraphs[0]
+            if entry_index == 0
+            else target_cell.add_paragraph("")
+        )
+        if relevant_entry["shortTime"][entry_index]:
+            # TODO #16 something is off here ... same time for all on web export
+            current_paragraph.add_run(relevant_entry["shortTime"][entry_index])
+        if relevant_entry["shortName"][entry_index]:
+            # should be single relevant_row only but getting list
+            current_paragraph.add_run(" " + relevant_entry["shortName"][entry_index])
+
+        # Apply bold formatting nad set font size and font family
+        for run in current_paragraph.runs:
+            run.bold = True
+
+        if relevant_entry["specialService"][entry_index]:
+            current_paragraph.runs[-1].add_break()
+            current_paragraph.add_run(
+                " " + relevant_entry["specialService"][entry_index]
+            )
+        if relevant_entry["predigt"][entry_index]:
+            current_paragraph.runs[-1].add_break()
+            current_paragraph.add_run(f"({relevant_entry["predigt"][entry_index]})")
+
+
+def change_font_of_table(table: docx.table) -> None:
+    """Inplace overwrite of font styles commonly used for all columns.
+
+    Args:
+        table: the table to iterate
+    """
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.font.name = "ArialNarrow"
+                    run.font.size = Pt(15)
