@@ -107,7 +107,7 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     heading = f"Unsere Gottesdienste im {from_date.strftime("%B %Y")}"
     document.add_heading(heading)
 
-    locations = set([item[0] for item in data.columns[1:]])
+    locations = set([item[0] for item in data.columns[2:]])
 
     table = document.add_table(rows=1, cols=len(locations) + 1)
     hdr_cells = table.rows[0].cells
@@ -120,7 +120,9 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
 
     for index, df_row in data.iterrows():
         row_cells = table.add_row().cells
-        row_cells[0].text = df_row["shortDay"]
+        para = row_cells[0].paragraphs[0]
+        para.add_run(df_row["shortDay"].iloc[0]).add_break()
+        para.add_run(df_row["specialDayName"].iloc[0])
         for paragraph in row_cells[0].paragraphs:
             for run in paragraph.runs:
                 run.bold = True
@@ -153,9 +155,12 @@ def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
         df_shortDay = df_input[df_input["shortDay"] == shortDay]
         new_index = len(df_output)
         df_output.loc[new_index] = [pd.NA] * df_output.shape[1]
-        df_output.iloc[new_index]["shortDay"] = shortDay
+        df_output.iloc[new_index]["shortDay"] = df_shortDay["shortDay"].iloc[0]
+        df_output.iloc[new_index]["specialDayName"] = df_shortDay[
+            "specialDayName"
+        ].iloc[0]
 
-        locations = OrderedDict.fromkeys(i[0] for i in df_shortDay.columns[1:])
+        locations = OrderedDict.fromkeys(i[0] for i in df_shortDay.columns[2:])
         for location in locations:
             for col in df_shortDay[location]:
                 value_list = []

@@ -366,9 +366,8 @@ def download_plan_months():
                 "shortName": extract_relevant_calendar_appointment_shortname(
                     item["caption"]
                 ),
-                "shortDay": item["startDate"].strftime("%d.%m")
-                + " "
-                + get_special_day_name(
+                "shortDay": item["startDate"].strftime("%a %d.%m"),
+                "specialDayName": get_special_day_name(
                     ct_api=session["ct_api"],
                     special_name_calendar_ids=SPECIAL_DAY_CALENDAR_ID,
                     date=item["startDate"],
@@ -403,7 +402,7 @@ def download_plan_months():
         df_data_pivot = (
             df_raw.pivot_table(
                 values=["shortTime", "shortName", "predigt", "specialService"],
-                index=["startDate", "shortDay"],
+                index=["startDate", "shortDay", "specialDayName"],
                 columns=["location"],
                 aggfunc=list,
                 fill_value="",
