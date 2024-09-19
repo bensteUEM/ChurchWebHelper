@@ -9,9 +9,11 @@ from dateutil.relativedelta import relativedelta
 
 from datetime import datetime
 import docx
-from docx.shared import Pt
+from docx.shared import Pt, RGBColor, Cm
 import docx.table
 import pandas as pd
+from docx.oxml import OxmlElement, ns
+from docx.oxml.ns import qn
 
 
 def get_special_day_name(
@@ -104,8 +106,17 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     """
 
     document = docx.Document()
-    set_page_margins(document, top=5.71, bottom=1.27, left=2.75, right=0.25)
-    #TODO page Absatz before -1,50 cm; behind -0,25 cm; first row -0,09 cm
+    padding_left = 1.5
+    padding_right = -0.25
+    padding_top = -1
+    set_page_margins(
+        document,
+        top=5.71 + padding_top,
+        bottom=1.27,
+        left=2.75 - padding_left,
+        right=0.25 - padding_right,
+    )
+
     heading = f"Unsere Gottesdienste im {from_date.strftime("%B %Y")}"
     paragraph = document.add_heading(heading)
     for run in paragraph.runs:
@@ -138,10 +149,17 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
                 target_cell=row_cells[1 + column_no], relevant_entry=df_row[location]
             )
 
-    change_font_of_table(table=table)
+    change_table_format(table=table)
 
-    FOOTER_TEXT = "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: Juliane Haas, Tel: 604467 oder Bärbel Vögele, Tel.:121136"
-    document.add_paragraph(FOOTER_TEXT)
+    FOOTER_TEXTs = [
+        "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: Juliane Haas, Tel: 604467 oder Bärbel Vögele, Tel.:121136",
+        "Aktuelle und weitere Termine auch auf unserer Website",
+    ]
+    for footer_text in FOOTER_TEXTs:
+        para = document.add_paragraph(footer_text)
+        run = para.runs[0]
+        run.font.name = "Arial"
+        run.font.size = Pt(11)
 
     return document
 
@@ -232,21 +250,37 @@ def generate_event_paragraph(
             current_paragraph.add_run(f"({relevant_entry["predigt"][entry_index]})")
 
 
-def change_font_of_table(table: docx.table) -> None:
-    """Inplace overwrite of font styles commonly used for all columns.
+def change_table_format(table: docx.table) -> None:
+    """Inplace overwrite of styles
 
     Args:
-        table: the table to iterate
+        table: the table to modify
     """
+
+    # Access the XML element of the table and move ident because by default it's 1,9cm off
+    tbl_pr = table._element.xpath("w:tblPr")[0]
+    tbl_indent = OxmlElement("w:tblInd")
+    tbl_indent.set(qn("w:w"), "107.12")
+    tbl_indent.set(qn("w:type"), "dxa")
+    tbl_pr.append(tbl_indent)
+
+    # iterate all rows
     for row in table.rows:
+        # iterate all cells
         for cell in row.cells:
+            set_cell_border(cell=cell)
+            set_cell_margins(cell, 100, 100, 0, 100)
+            # iterate all paragraphs
             for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.space_after = Pt(100) * 20
                 for run in paragraph.runs:
                     run.font.name = "ArialNarrow"
                     run.font.size = Pt(15)
 
 
-def set_page_margins(doc:docx.Document, top:float, bottom:float, left:float, right:float):
+def set_page_margins(
+    doc: docx.Document, top: float, bottom: float, left: float, right: float
+):
     """Helper to set document page borders in cm
 
     Args:
@@ -263,3 +297,63 @@ def set_page_margins(doc:docx.Document, top:float, bottom:float, left:float, rig
     section.bottom_margin = Cm(bottom)
     section.left_margin = Cm(left)
     section.right_margin = Cm(right)
+
+
+def set_cell_border(cell):
+    """Function to add borders to a cell.
+
+    Args:
+        cell: the table cell to change
+    """
+    tc = cell._element
+    tcPr = tc.get_or_add_tcPr()
+
+    # Create borders element
+    tcBorders = OxmlElement("w:tcBorders")
+
+    # Define each side's border attributes (top, left, bottom, right)
+    for side in ["top", "left", "bottom", "right"]:
+        border = OxmlElement(f"w:{side}")
+        border.set(qn("w:val"), "single")  # Border style
+        border.set(qn("w:sz"), "4")  # Border width (in eighths of a point)
+        border.set(qn("w:color"), "auto")  # Automatic color (black)
+        tcBorders.append(border)
+
+    tcPr.append(tcBorders)
+
+
+def set_cell_margins(cell, top=0, start=0, bottom=0, end=0):
+    """Function to set cell margins (padding).
+
+    Args:
+        cell: the table cell to modify
+        top: margin size in dxa (pt/20). Defaults to 0.
+        start: margin size in dxa (pt/20). Defaults to 0.
+        bottom: margin size in dxa (pt/20). Defaults to 0.
+        end: margin size in dxa (pt/20). Defaults to 0.
+    """
+    tc = cell._element  # Access the underlying XML element for the cell
+    tcPr = tc.find(ns.qn("w:tcPr"))  # Find the <w:tcPr> element if it exists
+
+    # If <w:tcPr> doesn't exist, create it
+    if tcPr is None:
+        tcPr = OxmlElement("w:tcPr")
+        tc.insert(0, tcPr)
+
+    # Create or modify the tcMar (cell margins) element
+    tcMar = tcPr.find(ns.qn("w:tcMar"))
+    if tcMar is None:
+        tcMar = OxmlElement("w:tcMar")
+        tcPr.append(tcMar)
+
+    # Set each margin (top, start=left, bottom, end=right) in dxa (1/20th of a point)
+    for side, margin in [
+        ("top", top),
+        ("start", start),
+        ("bottom", bottom),
+        ("end", end),
+    ]:
+        margin_element = OxmlElement(f"w:{side}")
+        margin_element.set(ns.qn("w:w"), str(margin))  # Set margin size in dxa
+        margin_element.set(ns.qn("w:type"), "dxa")  # dxa = 1/20th of a point
+        tcMar.append(margin_element)
