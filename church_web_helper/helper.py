@@ -357,3 +357,25 @@ def set_cell_margins(cell, top=0, start=0, bottom=0, end=0):
         margin_element.set(ns.qn("w:w"), str(margin))  # Set margin size in dxa
         margin_element.set(ns.qn("w:type"), "dxa")  # dxa = 1/20th of a point
         tcMar.append(margin_element)
+
+def get_primary_resource(appointment_id:int,
+                        relevant_date:datetime,
+                        api:CTAPI,
+                        considered_resource_ids:list[int],)->str:
+    """Helper which is used to get the primary resource allocation of an event
+
+    Args:
+        appointment_id: id of calendar entry
+        relevant_date: the date of the appointment is required because appointment_id is not unique on repetitions
+        considered_resource_ids: resource ids to consider
+
+    Returns:
+        shortened resource representation
+    """
+    bookings = api.get_bookings(resource_ids=considered_resource_ids,
+                                _from=relevant_date,
+                                _to=relevant_date,
+                                appointment_id=appointment_id)
+    locations = {booking["base"]["resource"]["name"] for booking in bookings}
+
+    return locations

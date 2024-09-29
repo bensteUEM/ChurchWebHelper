@@ -7,6 +7,7 @@ import docx
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
     get_plan_months_docx,
+    get_primary_resource,
     get_special_day_name,
 )
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
@@ -107,6 +108,19 @@ class Test_Helper:
 
         assert compare_docx_files(result, expected_sample)
 
+    def test_get_primary_resource(self):
+        SAMPLE_EVENT_ID = 330754
+        SAMPLE_DATE = datetime(year=2024, month=9, day=29)
+        EXPECTED_RESULT = {'Michaelskirche (MIKI)'}
+        RESOURCE_IDS = [8,16,17,20,21]
+
+        result = get_primary_resource(appointment_id=SAMPLE_EVENT_ID,
+                                    relevant_date=SAMPLE_DATE,
+                                    api=self.ct_api,
+                                    considered_resource_ids=RESOURCE_IDS,
+                                    )
+
+        assert EXPECTED_RESULT == result
 
 def test_compare_docx_files():
     FILENAME = "tests/samples/test_get_plan_months.docx"

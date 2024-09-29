@@ -31,6 +31,7 @@ from church_web_helper.helper import (
     deduplicate_df_index_with_lists,
     extract_relevant_calendar_appointment_shortname,
     get_plan_months_docx,
+    get_primary_resource,
     get_special_day_name,
 )
 
@@ -285,12 +286,8 @@ def download_plan_months():
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
 
-    available_resources = {"0": "Not implemented see #16"}
-    """
-    available_resources = {
-        resource["id"]: resource["name"] for resource in session["ct_api"].get_resources()
-    }
-    """
+    resources = session["ct_api"].get_resource_masterdata(result_type="resources")
+    available_resources = {resource['id']:resource['name'] for resource in resources}
 
     if request.method == "GET":
         selected_calendars = available_calendars.keys()
@@ -387,16 +384,27 @@ def download_plan_months():
             )
 
             # location
-            data[id]["location"] = random.randint(
-                1, 4
-            )  # TODO #16 location is not yet available and assigned at random
-            replacement = {
-                "1": "MAKI Test",
-                "2": "FTal Test",
-                "3": "TBach Test",
-                "4": "GH Test",
+            data[id]["location"] = list(
+                get_primary_resource(appointment_id=id,
+                                     relevant_date=item["startDate"],
+                                     api=session["ct_api"],
+                                     considered_resource_ids=selected_resources)
+                                     )
+            if len(data[id]["location"]) >0:
+                data[id]["location"] = data[id]["location"][0]
+            else:
+                data[id]["location"] = "Ortsangabe nicht ausgewählt"
+
+            replacements = {
+                "Marienkirche": "Marienkirche Baiersbronn",
+                "Michaelskirche (MIKI)": "Michaelskirche Friedrichstal",
+                "Johanneskirche (JOKI)": "Johanneskirche Tonbach",
+                "Gemeindehaus Großer Saal": "Gemeindehaus Baiersbronn",
+                "Gemeindehaus Kleiner Saal" : "Gemeindehaus Baiersbronn",
             }
-            data[id]["location"] = replacement[str(data[id]["location"])]
+
+            for old, new in replacements.items():
+                data[id]["location"] = data[id]["location"].replace(old,new)
 
         df_raw: pd.DataFrame = pd.DataFrame(data).transpose()
         df_data_pivot = (
