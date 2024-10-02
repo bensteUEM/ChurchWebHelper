@@ -4,10 +4,11 @@ It is used to outsource parts which don't need to be part of app.py
 """
 
 from collections import OrderedDict
+import logging
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from dateutil.relativedelta import relativedelta
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import docx
 from docx.shared import Pt, RGBColor, Cm
 import docx.table
@@ -15,6 +16,7 @@ import pandas as pd
 from docx.oxml import OxmlElement, ns
 from docx.oxml.ns import qn
 
+logger = logging.getLogger(__name__)
 
 def get_special_day_name(
     ct_api: CTAPI, special_name_calendar_ids: list[int], date: datetime
@@ -180,8 +182,8 @@ def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
         df_shortDay = df_input[df_input["shortDay"] == shortDay]
         new_index = len(df_output)
         df_output.loc[new_index] = [pd.NA] * df_output.shape[1]
-        df_output.iloc[new_index]["shortDay"] = df_shortDay["shortDay"].iloc[0]
-        df_output.iloc[new_index]["specialDayName"] = df_shortDay[
+        df_output.loc[new_index,"shortDay"] = df_shortDay["shortDay"].iloc[0]
+        df_output.loc[new_index, "specialDayName"] = df_shortDay[
             "specialDayName"
         ].iloc[0]
 
@@ -379,3 +381,95 @@ def get_primary_resource(appointment_id:int,
     locations = {booking["base"]["resource"]["name"] for booking in bookings}
 
     return locations
+
+def get_title_name_services(
+                        calendar_ids : list[int],
+                        appointment_id:int,
+                        relevant_date:datetime,
+                        api:CTAPI,
+                        considered_services:list[int])->str:
+    """Helper function which retrieves a text representation of a service including the service specific title.
+    1. Lookup relevant services
+    2. Lookup the prefix of the person to be used based on group assignemnts 
+
+    Args:
+        calendar_ids: list of calendars to consider
+        appointment_id: number of the calendar appointment
+        relevant_date: the date of the event to be unique
+        api: reference to api in order to request more information from CT
+        considered_services: list of services which should be considered
+
+    Returns:
+        formatted useable string with title and name
+    """
+    calendar_appointment = api.get_calendar_appointments(calendar_ids=calendar_ids,
+                                                        from_=relevant_date,
+                                                        to_=relevant_date,
+                                                        appointment_id=appointment_id)
+    
+    # WORKAROUND because of CT issue needed !
+    # https://github.com/bensteUEM/ChurchToolsAPI/issues/109
+
+    events_on_day = api.get_events(from_=relevant_date, to_ = relevant_date + timedelta(days=1))
+
+    relevant_event = [event for event in events_on_day if event["appointmentId"] == appointment_id][0]
+    relevant_persons = []
+    for service_id in considered_services:
+        relevant_persons.extend(api.get_persons_with_service(eventId=relevant_event['id'],serviceId=service_id))
+
+    #api.get_persons_with_service
+
+    RELEVANT_GROUPS_FOR_PREFIX = [89,355,358,367,370,373]
+
+    names_with_title = []
+    for person in relevant_persons:
+        title_prefix = get_group_title_of_person(person_id=person['personId'],
+                                                relevant_groups=RELEVANT_GROUPS_FOR_PREFIX,
+                                                api=api)
+        if person["personId"]:
+            lastname = person['person']['domainAttributes']['lastName']
+            formatted_name = f"{title_prefix} {lastname}".lstrip()
+        else:
+            formatted_name = "Noch unbekannt"
+        names_with_title.append(formatted_name)
+
+    return ", ".join(names_with_title)
+
+def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAPI) ->str:
+    """Retrieve name of first group for specified person and gender it if possible
+
+    Args:
+        person_id: CT id of the user
+        relevant_groups: the CT id of any groups to be considered as title
+        ct_api: access to request more info from CT
+
+    Permissions:
+        view person
+        view alldata (Persons)
+        view group
+        
+    Returns:
+        Prefix which is used as title incl. gendered version
+    """
+    for group_id in relevant_groups:
+        group_member_ids = [group["personId"] for group in api.get_group_members(group_id=group_id)]
+        if person_id in group_member_ids:
+            group_name = api.get_groups(group_id=group_id)["name"] #TODO https://github.com/bensteUEM/ChurchToolsAPI/issues/111 - add list index once API is fixed
+            break
+    else:
+        group_name = ""
+
+    # add 'IN' suffix to first part of group member in order to apply german gender for most common cases
+    person = api.get_persons(ids=[person_id])[0]
+    if False: #person.get('sexId'):
+        #TODO #16 - make use of metadata to map sexID to female
+        if person["sexId"] == "female" and len(group_name)>0:
+            parts = group_name.split(" ")
+            parts[0] = parts[0]+"in"
+            group_name = " ".join(group_name)
+    else:
+        logger.warning("no sexId applied because its unavailable with tech user in API - see support ticket 130953")
+
+    return group_name
+
+    # TODO check if "person" / Title prefix with mass change might be a better idea ...

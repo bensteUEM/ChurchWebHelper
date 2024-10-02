@@ -6,9 +6,11 @@ import docx
 
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
+    get_group_title_of_person,
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
+    get_title_name_services,
 )
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 
@@ -121,6 +123,45 @@ class Test_Helper:
                                     )
 
         assert EXPECTED_RESULT == result
+
+    def test_get_title_name_services(self):
+        SAMPLE_CALENDAR_IDS=[2]
+        SAMPLE_APPOINTMENT_ID = 330763
+        SAMPLE_DATE = datetime(year=2024, month=9, day=29)
+        SAMPLE_SERVICES = [1]
+
+        result = get_title_name_services(calendar_ids= SAMPLE_CALENDAR_IDS, 
+                                        appointment_id= SAMPLE_APPOINTMENT_ID,
+                                        relevant_date = SAMPLE_DATE,
+                                        considered_services = SAMPLE_SERVICES,
+                                        api = self.ct_api,
+        )
+        
+        EXPECTED_RESULT = "Pfarrer Vögele"
+        assert EXPECTED_RESULT == result
+
+    @pytest.mark.parametrize(
+        "person_id, relevant_groups, expected_result",
+        [
+            (51, [367,89,355,358], "Pfarrer"), 
+            (51, [], ""), 
+            (822, [367,89,355,358], "Pfarrerin"),
+            (110, [367,89,355,358], "Prädikant"),
+            (205, [367,89,355,358], "Pfarrerin i.R."),
+            (911, [367,89,355,358], "Pfarrerin i.R."),
+            (423, [370], "Pastoralreferent (Kath.)"),
+            (420, [370], "Pastoralreferentin (Kath.)"),
+            (513, [355,358], ""),
+            (640, [358], "Diakon")
+        ],
+    )
+    def test_get_group_title_of_person(self, person_id, relevant_groups, expected_result):
+        """Check that titles by group can be retrieved
+
+        ELKW1610 specific IDs - 
+        """
+        result = get_group_title_of_person(person_id, relevant_groups, api=self.ct_api)
+        assert expected_result == result
 
 def test_compare_docx_files():
     FILENAME = "tests/samples/test_get_plan_months.docx"

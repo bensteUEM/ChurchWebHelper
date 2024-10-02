@@ -5,7 +5,6 @@ import logging
 import locale
 import os
 from datetime import datetime, time
-import random
 import re
 from matplotlib import pyplot as plt
 import pandas as pd
@@ -33,7 +32,10 @@ from church_web_helper.helper import (
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
+    get_title_name_services,
 )
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -226,7 +228,7 @@ def download_events():
         # events_temp.extend(session['ct_api'].get_events(eventId=2147))  # debugging
         # events_temp.extend(session['ct_api'].get_events(eventId=2129))  #
         # debugging
-        logging.debug("{} Events loaded".format(len(events_temp)))
+        logger.debug("{} Events loaded".format(len(events_temp)))
 
         event_choices = []
         session["event_agendas"] = {}
@@ -242,7 +244,7 @@ def download_events():
                 event = {"id": event["id"], "label": datetext + "\t" + event["name"]}
                 event_choices.append(event)
 
-        logging.debug("{} Events kept because schedule exists".format(len(events_temp)))
+        logger.debug("{} Events kept because schedule exists".format(len(events_temp)))
 
         return render_template(
             "download_events.html",
@@ -375,9 +377,13 @@ def download_plan_months():
             }
 
             # Predigt
-            data[id]["predigt"] = (
-                "PERSON #16"  # TODO #16 person is not yet identified and a placeholder
-            )
+            CONSIDERED_SERVICES = [1]
+            data[id]["predigt"] = get_title_name_services(calendar_ids=selected_calendars,
+                                                          appointment_id=id,
+                                                          relevant_date=item["startDate"],
+                                                          api=session["ct_api"],
+                                                          considered_services=CONSIDERED_SERVICES
+                                                          )
 
             data[id]["specialService"] = (
                 "mit Posaunenchor"  # TODO #16 specialService is not yet identified and a placeholder
