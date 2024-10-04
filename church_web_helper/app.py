@@ -32,6 +32,7 @@ from church_web_helper.helper import (
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
+    get_group_name_services,
     get_title_name_services,
 )
 
@@ -377,17 +378,32 @@ def download_plan_months():
             }
 
             # Predigt
-            CONSIDERED_SERVICES = [1]
+            CONSIDERED_PROGRAM_SERVICES = [1]
+            CONSIDERED_GROUPS_FOR_PREFIX = [89,355,358,361,367,370,373]
+
             data[id]["predigt"] = get_title_name_services(calendar_ids=selected_calendars,
                                                           appointment_id=id,
                                                           relevant_date=item["startDate"],
                                                           api=session["ct_api"],
-                                                          considered_services=CONSIDERED_SERVICES
+                                                          considered_program_services=CONSIDERED_PROGRAM_SERVICES,
+                                                          considered_groups=CONSIDERED_GROUPS_FOR_PREFIX,
                                                           )
+            CONSIDERED_MUSIC_SERVICES = [
+                9, #	Dirigent:in (Chor)
+                61, # 	Dirigent:in (Posaunenchor)
+            ]
+            GROUPTYPE_ROLE_ID_LEADS = [
+                9, # Leitung in "Dienst"
+                16 # Leitung in "Kleingruppe"
+                ]
 
-            data[id]["specialService"] = (
-                "mit Posaunenchor"  # TODO #16 specialService is not yet identified and a placeholder
-            )
+            data[id]["specialService"] = get_group_name_services(calendar_ids=selected_calendars,
+                                                          appointment_id=id,
+                                                          relevant_date=item["startDate"],
+                                                          api=session["ct_api"],
+                                                          considered_music_services=CONSIDERED_MUSIC_SERVICES,
+                                                          considered_grouptype_role_ids=GROUPTYPE_ROLE_ID_LEADS
+                                                          )
 
             # location
             data[id]["location"] = list(

@@ -10,6 +10,7 @@ from church_web_helper.helper import (
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
+    get_group_name_services,
     get_title_name_services,
 )
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
@@ -129,11 +130,13 @@ class Test_Helper:
         SAMPLE_APPOINTMENT_ID = 330763
         SAMPLE_DATE = datetime(year=2024, month=9, day=29)
         SAMPLE_SERVICES = [1]
+        SAMPLE_GROUPS_FOR_PREFIX = [89,355,358,361,367,370,373]
 
         result = get_title_name_services(calendar_ids= SAMPLE_CALENDAR_IDS, 
                                         appointment_id= SAMPLE_APPOINTMENT_ID,
                                         relevant_date = SAMPLE_DATE,
-                                        considered_services = SAMPLE_SERVICES,
+                                        considered_program_services = SAMPLE_SERVICES,
+                                        considered_groups=SAMPLE_GROUPS_FOR_PREFIX,
                                         api = self.ct_api,
         )
         
@@ -147,7 +150,7 @@ class Test_Helper:
             (51, [], ""), 
             (822, [367,89,355,358], "Pfarrerin"),
             (110, [367,89,355,358], "Prädikant"),
-            (205, [367,89,355,358], "Pfarrerin i.R."),
+            (205, [367,89,355,358], "Pfarrer i.R."),
             (911, [367,89,355,358], "Pfarrerin i.R."),
             (423, [370], "Pastoralreferent (Kath.)"),
             (420, [370], "Pastoralreferentin (Kath.)"),
@@ -160,7 +163,43 @@ class Test_Helper:
 
         ELKW1610 specific IDs - 
         """
-        result = get_group_title_of_person(person_id, relevant_groups, api=self.ct_api)
+        result = get_group_title_of_person(person_id,
+                                           relevant_groups,
+                                            api=self.ct_api,
+                                            )
+        assert expected_result == result
+
+    # ELKW1610 specific IDs
+    # 330754 - Kirchenchor 29.09 FTal 9:00
+    # 327886 - Musikteam 29.9 GH
+    # 330763 - InJoyChor Tonbach 29.9 - 10:15
+    # 327684 - PChor - 8.9
+    @pytest.mark.parametrize(
+        "appointment_id, relevant_date, considered_services, expected_result",
+        [
+            (327886, datetime(year=2024, month=9, day=29), [9,61], ""),
+            (330754, datetime(year=2024, month=9, day=29), [9,61], "mit Kirchenchor"), 
+            (330754, datetime(year=2024, month=9, day=29), [], ""), 
+            (330763, datetime(year=2024, month=9, day=29), [9,61], "mit InJoy Chor"),  #Testing "mit InJoy Chor, Kirchenchor"
+            (327847, datetime(year=2024, month=9, day=8), [9,61], "mit Posaunenchor"), # Testing "mit Kirchenchor und Posaunenchor"
+        ],
+    )
+    def test_get_group_name_services(self, appointment_id, relevant_date, considered_services, expected_result):
+        """Check that special service group names can be retrieved
+
+        ELKW1610 specific IDs - 
+        """
+        SAMPLE_CALENDAR_IDS = [2]
+        SAMPLE_GROUPTYPE_ROLE_ID_LEADS = [9,16]
+
+        result = get_group_name_services(calendar_ids=SAMPLE_CALENDAR_IDS,
+                                                appointment_id=appointment_id,
+                                                relevant_date=relevant_date,
+                                                api=self.ct_api,
+                                                considered_music_services=considered_services,
+                                                considered_grouptype_role_ids=SAMPLE_GROUPTYPE_ROLE_ID_LEADS
+                                                )
+
         assert expected_result == result
 
 def test_compare_docx_files():

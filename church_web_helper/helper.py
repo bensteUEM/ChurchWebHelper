@@ -387,8 +387,13 @@ def get_title_name_services(
                         appointment_id:int,
                         relevant_date:datetime,
                         api:CTAPI,
-                        considered_services:list[int])->str:
-    """Helper function which retrieves a text representation of a service including the service specific title.
+                        considered_program_services:list[int],
+                        considered_groups:list[int],
+                        )->str:
+                        
+    """
+    Helper function which retrieves a text representation of a service including the persons title based on considered groups.
+
     1. Lookup relevant services
     2. Lookup the prefix of the person to be used based on group assignemnts 
 
@@ -397,7 +402,8 @@ def get_title_name_services(
         appointment_id: number of the calendar appointment
         relevant_date: the date of the event to be unique
         api: reference to api in order to request more information from CT
-        considered_services: list of services which should be considered
+        considered_program_services: list of services which should be considered
+        considered_groups: groups which should be used as prefix if applicable
 
     Returns:
         formatted useable string with title and name
@@ -412,19 +418,19 @@ def get_title_name_services(
 
     events_on_day = api.get_events(from_=relevant_date, to_ = relevant_date + timedelta(days=1))
 
-    relevant_event = [event for event in events_on_day if event["appointmentId"] == appointment_id][0]
+    relevant_event = [event for event in events_on_day if event["appointmentId"] == appointment_id]
+    if len(relevant_event) == 0:
+        return ""
+    relevant_event = relevant_event[0]
+
     relevant_persons = []
-    for service_id in considered_services:
+    for service_id in considered_program_services:
         relevant_persons.extend(api.get_persons_with_service(eventId=relevant_event['id'],serviceId=service_id))
-
-    #api.get_persons_with_service
-
-    RELEVANT_GROUPS_FOR_PREFIX = [89,355,358,367,370,373]
 
     names_with_title = []
     for person in relevant_persons:
         title_prefix = get_group_title_of_person(person_id=person['personId'],
-                                                relevant_groups=RELEVANT_GROUPS_FOR_PREFIX,
+                                                relevant_groups=considered_groups,
                                                 api=api)
         if person["personId"]:
             lastname = person['person']['domainAttributes']['lastName']
@@ -436,7 +442,7 @@ def get_title_name_services(
     return ", ".join(names_with_title)
 
 def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAPI) ->str:
-    """Retrieve name of first group for specified person and gender it if possible
+    """Retrieve name of first group for specified person and gender if possible
 
     Args:
         person_id: CT id of the user
@@ -473,3 +479,69 @@ def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAP
     return group_name
 
     # TODO check if "person" / Title prefix with mass change might be a better idea ...
+
+def get_group_name_services(calendar_ids : list[int],
+                        appointment_id:int,
+                        relevant_date:datetime,
+                        api:CTAPI,
+                        considered_music_services:list[int],
+                        considered_grouptype_role_ids:list[int]
+                        )->str:
+                        
+    """Helper which will retrieve the name of special services involved with the calendar appointment on that day.
+
+    1. get event
+    2. for each service
+        - check who is assigned
+        - check what groups are relevant
+    3. for each person in service
+        - check group membership
+        - add groupname to result list if applicable
+    4. join the groups applicable to a useable text string
+
+    Args:
+        calendar_ids: list of calendars to consider
+        appointment_id: number of the calendar appointment
+        relevant_date: the date of the event to be unique
+        api: reference to api in order to request more information from CT
+        considered_music_services: list of services which should be considered
+        considered_grouptype_role_ids: list of grouptype_id roles to be considered (differs by group type!)
+
+    Returns:
+        text which can be used as suffix - empty in case no special service
+    """
+    
+    calendar_appointment = api.get_calendar_appointments(calendar_ids=calendar_ids,
+                                                        from_=relevant_date,
+                                                        to_=relevant_date,
+                                                        appointment_id=appointment_id)
+    
+    # WORKAROUND because of CT issue needed !
+    # https://github.com/bensteUEM/ChurchToolsAPI/issues/109
+
+    events_on_day = api.get_events(from_=relevant_date, to_=relevant_date+timedelta(days=1))
+    relevant_event = [event for event in events_on_day if event["appointmentId"] == appointment_id]
+    if len(relevant_event) == 0:
+        return ""
+    relevant_event = relevant_event[0]
+
+    #TODO consider merging into a "get event from calendar id and date .... fcuntion" -> events API
+    # reuse in get_title_name_services
+
+    result_groups = []
+    for service in considered_music_services:
+        service_assignments = api.get_persons_with_service(eventId=relevant_event['id'],serviceId=service)
+        persons = [service['person'] for service in service_assignments]
+        relevant_group_results = [service["groupIds"] for service in api.get_event_masterdata()["services"] if service['id'] in considered_music_services]
+        considered_group_ids = {int(group_id) for group_result in relevant_group_results for group_id in group_result.split(',')}
+        for person in persons:
+            group_assignemnts = api.get_groups_members(group_ids=considered_group_ids, #TODO #16 is relevant group ids ignored here?
+                                            grouptype_role_ids=considered_grouptype_role_ids,
+                                            person_ids=[int(person['domainIdentifier'])])
+            relevant_group_ids = [group['groupId'] for group in group_assignemnts if group['groupId'] in considered_group_ids] #TODO #16 WORKAROUND because previous filter not applied
+            #TODO workaround required because of https://github.com/bensteUEM/ChurchToolsAPI/issues/112
+            for group_id in relevant_group_ids:
+                group = api.get_groups(group_id=group_id)
+                result_groups.append(group["name"])    
+    result_string = "mit "+ " und ".join(result_groups) if len(result_groups) > 0 else ""
+    return result_string
