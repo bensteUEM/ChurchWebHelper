@@ -285,18 +285,43 @@ def download_events():
 
 @app.route("/download/plan_months", methods=["GET", "POST"])
 def download_plan_months():
+    #default params are set ELKW1610.krz.tools specific and must be adjusted in case a different CT instance is used
+    DEFAULTS = {
+            "default_timeframe_months" : 1,
+            "special_day_calendar_ids" : [52, 72],
+            "selected_calendars" : [2],
+            "available_resource_type_ids" : [4,6,5],
+            "selected_resources" : [8, 20, 21, 16, 17],
+            "selected_program_services" : [1],
+            "selected_title_prefix_groups" : [89,355,358,361,367,370,373],
+            "selected_music_services": [9,61],
+            "grouptype_role_id_leads" : [
+                9, # Leitung in "Dienst"
+                16 # Leitung in "Kleingruppe"
+                ],
+            "program_service_group_id": 1,
+            "music_service_group_id": 4,
+        }
+
+
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
 
     resources = session["ct_api"].get_resource_masterdata(result_type="resources")
-    available_resources = {resource['id']:resource['name'] for resource in resources}
+    # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization   
+    available_resources = {resource['id']:resource['name'] for resource in resources if resource['resourceTypeId'] in DEFAULTS.get("available_resource_type_ids")}
+
+    event_masterdata = session["ct_api"].get_event_masterdata()
+    # service_groups = event_masterdata["serviceGroups"] # Check your Service Group IDs here for customization   
+    available_program_services = {service['id']: service['name'] for service in event_masterdata["services"] if service["serviceGroupId"] == DEFAULTS.get("program_service_group_id")}
+    available_music_services = {service['id']: service['name'] for service in event_masterdata["services"] if service["serviceGroupId"] == DEFAULTS.get("music_service_group_id")}
 
     if request.method == "GET":
-        selected_calendars = available_calendars.keys()
-        selected_resources = available_resources.keys()
-
-        DEFAULT_TIMEFRAME_MONTHS = 1
+        selected_calendars = DEFAULTS.get("selected_calendars",available_calendars.keys())
+        selected_resources = DEFAULTS.get("selected_resources",available_resources.keys())
+        selected_program_services = DEFAULTS.get("selected_program_services",available_program_services.keys())
+        selected_music_services =  DEFAULTS.get("selected_music_services",available_music_services.keys())
 
         from_date = datetime.now().date()
         if from_date.month == 12:
@@ -307,7 +332,7 @@ def download_plan_months():
 
         to_date = datetime.combine(
             from_date
-            + relativedelta(months=DEFAULT_TIMEFRAME_MONTHS)
+            + relativedelta(months=DEFAULTS.get("default_timeframe_months"))
             - relativedelta(days=1),
             time.max,
         )
@@ -319,6 +344,10 @@ def download_plan_months():
             selected_calendars=selected_calendars,
             available_resources=available_resources,
             selected_resources=selected_resources,
+            available_program_services= available_program_services,
+            selected_program_services=selected_program_services,
+            available_music_services = available_music_services,
+            selected_music_services = selected_music_services,
             from_date=from_date,
             to_date=to_date,
         )
@@ -333,6 +362,16 @@ def download_plan_months():
         selected_resources = [
             int(resource_id)
             for resource_id in request.form.getlist("selected_resources")
+        ]
+
+        selected_program_services = [
+            int(service_id)
+            for service_id in request.form.getlist("selected_program_services")
+        ]
+        
+        selected_music_services = [
+            int(service_id)
+            for service_id in request.form.getlist("selected_music_services")
         ]
 
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
@@ -359,7 +398,6 @@ def download_plan_months():
                 ).astimezone()
 
             # Simple attributes
-            SPECIAL_DAY_CALENDAR_ID = [52, 72]
             data[id] = {
                 "caption": item["caption"],
                 "startDate": item["startDate"],
@@ -369,7 +407,7 @@ def download_plan_months():
                 "shortDay": item["startDate"].strftime("%a %d.%m"),
                 "specialDayName": get_special_day_name(
                     ct_api=session["ct_api"],
-                    special_name_calendar_ids=SPECIAL_DAY_CALENDAR_ID,
+                    special_name_calendar_ids=DEFAULTS.get("special_day_calendar_ids"),
                     date=item["startDate"],
                 ),
                 "shortTime": item["startDate"].strftime("%H.%S")
@@ -378,31 +416,20 @@ def download_plan_months():
             }
 
             # Predigt
-            CONSIDERED_PROGRAM_SERVICES = [1]
-            CONSIDERED_GROUPS_FOR_PREFIX = [89,355,358,361,367,370,373]
-
             data[id]["predigt"] = get_title_name_services(calendar_ids=selected_calendars,
                                                           appointment_id=id,
                                                           relevant_date=item["startDate"],
                                                           api=session["ct_api"],
-                                                          considered_program_services=CONSIDERED_PROGRAM_SERVICES,
-                                                          considered_groups=CONSIDERED_GROUPS_FOR_PREFIX,
+                                                          considered_program_services=selected_program_services,
+                                                          considered_groups=DEFAULTS.get("selected_title_prefix_groups")
                                                           )
-            CONSIDERED_MUSIC_SERVICES = [
-                9, #	Dirigent:in (Chor)
-                61, # 	Dirigent:in (Posaunenchor)
-            ]
-            GROUPTYPE_ROLE_ID_LEADS = [
-                9, # Leitung in "Dienst"
-                16 # Leitung in "Kleingruppe"
-                ]
 
             data[id]["specialService"] = get_group_name_services(calendar_ids=selected_calendars,
                                                           appointment_id=id,
                                                           relevant_date=item["startDate"],
                                                           api=session["ct_api"],
-                                                          considered_music_services=CONSIDERED_MUSIC_SERVICES,
-                                                          considered_grouptype_role_ids=GROUPTYPE_ROLE_ID_LEADS
+                                                          considered_music_services=selected_music_services,
+                                                          considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads")
                                                           )
 
             # location
@@ -455,6 +482,10 @@ def download_plan_months():
                 selected_calendars=selected_calendars,
                 available_resources=available_resources,
                 selected_resources=selected_resources,
+                available_program_services= available_program_services,
+                selected_program_services=selected_program_services,
+                available_music_services = available_music_services,
+                selected_music_services = selected_music_services,
                 from_date=from_date,
                 to_date=to_date,
             )

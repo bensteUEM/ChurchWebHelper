@@ -44,6 +44,28 @@
                                 value="{{ to_date.strftime('%Y-%m-%d') }}">
                         </div>
                     </div>
+                    <div class="col-auto">
+                        <label for="selected_program_services" class="form-label">Program Services</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_program_services"
+                            size="10" name="selected_program_services">
+                            {% for service_id, service_name in available_program_services.items() %}
+                            <option {% if service_id in selected_program_services %} selected{% endif %}
+                                value="{{service_id}}">
+                                {{service_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label for="selected_music_services" class="form-label">Music Services</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_music_services"
+                            size="10" name="selected_music_services">
+                            {% for service_id, service_name in available_music_services.items() %}
+                            <option {% if service_id in selected_music_services %} selected{% endif %}
+                                value="{{service_id}}">
+                                {{service_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <input type="submit" name="action" class="btn btn-secondary" value="Auswahl anpassen">
                 <input type="submit" name="action" class="btn btn-primary" value="DOCx Document Download"> </br>
