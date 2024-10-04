@@ -408,20 +408,7 @@ def get_title_name_services(
     Returns:
         formatted useable string with title and name
     """
-    calendar_appointment = api.get_calendar_appointments(calendar_ids=calendar_ids,
-                                                        from_=relevant_date,
-                                                        to_=relevant_date,
-                                                        appointment_id=appointment_id)
-    
-    # WORKAROUND because of CT issue needed !
-    # https://github.com/bensteUEM/ChurchToolsAPI/issues/109
-
-    events_on_day = api.get_events(from_=relevant_date, to_ = relevant_date + timedelta(days=1))
-
-    relevant_event = [event for event in events_on_day if event["appointmentId"] == appointment_id]
-    if len(relevant_event) == 0:
-        return ""
-    relevant_event = relevant_event[0]
+    relevant_event = api.get_event_by_calendar_appointment(appointment_id=appointment_id, start_date=relevant_date)
 
     relevant_persons = []
     for service_id in considered_program_services:
@@ -511,22 +498,7 @@ def get_group_name_services(calendar_ids : list[int],
         text which can be used as suffix - empty in case no special service
     """
     
-    calendar_appointment = api.get_calendar_appointments(calendar_ids=calendar_ids,
-                                                        from_=relevant_date,
-                                                        to_=relevant_date,
-                                                        appointment_id=appointment_id)
-    
-    # WORKAROUND because of CT issue needed !
-    # https://github.com/bensteUEM/ChurchToolsAPI/issues/109
-
-    events_on_day = api.get_events(from_=relevant_date, to_=relevant_date+timedelta(days=1))
-    relevant_event = [event for event in events_on_day if event["appointmentId"] == appointment_id]
-    if len(relevant_event) == 0:
-        return ""
-    relevant_event = relevant_event[0]
-
-    #TODO consider merging into a "get event from calendar id and date .... fcuntion" -> events API
-    # reuse in get_title_name_services
+    relevant_event = api.get_event_by_calendar_appointment(appointment_id=appointment_id, start_date=relevant_date)
 
     result_groups = []
     for service in considered_music_services:
