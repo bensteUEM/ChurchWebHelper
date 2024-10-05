@@ -285,43 +285,62 @@ def download_events():
 
 @app.route("/download/plan_months", methods=["GET", "POST"])
 def download_plan_months():
-    #default params are set ELKW1610.krz.tools specific and must be adjusted in case a different CT instance is used
+    # default params are set ELKW1610.krz.tools specific and must be adjusted in case a different CT instance is used
     DEFAULTS = {
-            "default_timeframe_months" : 1,
-            "special_day_calendar_ids" : [52, 72],
-            "selected_calendars" : [2],
-            "available_resource_type_ids" : [4,6,5],
-            "selected_resources" : [8, 20, 21, 16, 17],
-            "selected_program_services" : [1],
-            "selected_title_prefix_groups" : [89,355,358,361,367,370,373],
-            "selected_music_services": [9,61],
-            "grouptype_role_id_leads" : [
-                9, # Leitung in "Dienst"
-                16 # Leitung in "Kleingruppe"
-                ],
-            "program_service_group_id": 1,
-            "music_service_group_id": 4,
-        }
-
+        "default_timeframe_months": 1,
+        "special_day_calendar_ids": [52, 72],
+        "selected_calendars": [2],
+        "available_resource_type_ids": [4, 6, 5],
+        "selected_resources": [8, 20, 21, 16, 17],
+        "selected_program_services": [1],
+        "selected_title_prefix_groups": [89, 355, 358, 361, 367, 370, 373],
+        "selected_music_services": [9, 61],
+        "grouptype_role_id_leads": [
+            9,  # Leitung in "Dienst"
+            16,  # Leitung in "Kleingruppe"
+        ],
+        "program_service_group_id": 1,
+        "music_service_group_id": 4,
+    }
 
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
 
     resources = session["ct_api"].get_resource_masterdata(result_type="resources")
-    # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization   
-    available_resources = {resource['id']:resource['name'] for resource in resources if resource['resourceTypeId'] in DEFAULTS.get("available_resource_type_ids")}
+    # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization
+    available_resources = {
+        resource["id"]: resource["name"]
+        for resource in resources
+        if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
+    }
 
     event_masterdata = session["ct_api"].get_event_masterdata()
-    # service_groups = event_masterdata["serviceGroups"] # Check your Service Group IDs here for customization   
-    available_program_services = {service['id']: service['name'] for service in event_masterdata["services"] if service["serviceGroupId"] == DEFAULTS.get("program_service_group_id")}
-    available_music_services = {service['id']: service['name'] for service in event_masterdata["services"] if service["serviceGroupId"] == DEFAULTS.get("music_service_group_id")}
+    # service_groups = event_masterdata["serviceGroups"] # Check your Service Group IDs here for customization
+    available_program_services = {
+        service["id"]: service["name"]
+        for service in event_masterdata["services"]
+        if service["serviceGroupId"] == DEFAULTS.get("program_service_group_id")
+    }
+    available_music_services = {
+        service["id"]: service["name"]
+        for service in event_masterdata["services"]
+        if service["serviceGroupId"] == DEFAULTS.get("music_service_group_id")
+    }
 
     if request.method == "GET":
-        selected_calendars = DEFAULTS.get("selected_calendars",available_calendars.keys())
-        selected_resources = DEFAULTS.get("selected_resources",available_resources.keys())
-        selected_program_services = DEFAULTS.get("selected_program_services",available_program_services.keys())
-        selected_music_services =  DEFAULTS.get("selected_music_services",available_music_services.keys())
+        selected_calendars = DEFAULTS.get(
+            "selected_calendars", available_calendars.keys()
+        )
+        selected_resources = DEFAULTS.get(
+            "selected_resources", available_resources.keys()
+        )
+        selected_program_services = DEFAULTS.get(
+            "selected_program_services", available_program_services.keys()
+        )
+        selected_music_services = DEFAULTS.get(
+            "selected_music_services", available_music_services.keys()
+        )
 
         from_date = datetime.now().date()
         if from_date.month == 12:
@@ -344,10 +363,10 @@ def download_plan_months():
             selected_calendars=selected_calendars,
             available_resources=available_resources,
             selected_resources=selected_resources,
-            available_program_services= available_program_services,
+            available_program_services=available_program_services,
             selected_program_services=selected_program_services,
-            available_music_services = available_music_services,
-            selected_music_services = selected_music_services,
+            available_music_services=available_music_services,
+            selected_music_services=selected_music_services,
             from_date=from_date,
             to_date=to_date,
         )
@@ -368,7 +387,7 @@ def download_plan_months():
             int(service_id)
             for service_id in request.form.getlist("selected_program_services")
         ]
-        
+
         selected_music_services = [
             int(service_id)
             for service_id in request.form.getlist("selected_music_services")
@@ -381,10 +400,8 @@ def download_plan_months():
             calendar_ids=selected_calendars, from_=from_date, to_=to_date
         )
 
-        data = {}
+        entries = []
         for item in calendar_appointments:
-            id = item["id"]
-
             # startDate casting
             if len(item["startDate"]) > 10:
                 item["startDate"] = (
@@ -398,7 +415,7 @@ def download_plan_months():
                 ).astimezone()
 
             # Simple attributes
-            data[id] = {
+            data = {
                 "caption": item["caption"],
                 "startDate": item["startDate"],
                 "shortName": extract_relevant_calendar_appointment_shortname(
@@ -416,46 +433,51 @@ def download_plan_months():
             }
 
             # Predigt
-            data[id]["predigt"] = get_title_name_services(calendar_ids=selected_calendars,
-                                                          appointment_id=id,
-                                                          relevant_date=item["startDate"],
-                                                          api=session["ct_api"],
-                                                          considered_program_services=selected_program_services,
-                                                          considered_groups=DEFAULTS.get("selected_title_prefix_groups")
-                                                          )
+            data["predigt"] = get_title_name_services(
+                calendar_ids=selected_calendars,
+                appointment_id=item["id"],
+                relevant_date=item["startDate"],
+                api=session["ct_api"],
+                considered_program_services=selected_program_services,
+                considered_groups=DEFAULTS.get("selected_title_prefix_groups"),
+            )
 
-            data[id]["specialService"] = get_group_name_services(calendar_ids=selected_calendars,
-                                                          appointment_id=id,
-                                                          relevant_date=item["startDate"],
-                                                          api=session["ct_api"],
-                                                          considered_music_services=selected_music_services,
-                                                          considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads")
-                                                          )
+            data["specialService"] = get_group_name_services(
+                calendar_ids=selected_calendars,
+                appointment_id=item["id"],
+                relevant_date=item["startDate"],
+                api=session["ct_api"],
+                considered_music_services=selected_music_services,
+                considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads"),
+            )
 
             # location
-            data[id]["location"] = list(
-                get_primary_resource(appointment_id=id,
-                                     relevant_date=item["startDate"],
-                                     api=session["ct_api"],
-                                     considered_resource_ids=selected_resources)
-                                     )
-            if len(data[id]["location"]) >0:
-                data[id]["location"] = data[id]["location"][0]
+            data["location"] = list(
+                get_primary_resource(
+                    appointment_id=item["id"],
+                    relevant_date=item["startDate"],
+                    api=session["ct_api"],
+                    considered_resource_ids=selected_resources,
+                )
+            )
+            if len(data["location"]) > 0:
+                data["location"] = data["location"][0]
             else:
-                data[id]["location"] = "Ortsangabe nicht ausgewählt"
+                data["location"] = "Ortsangabe nicht ausgewählt"
 
             replacements = {
                 "Marienkirche": "Marienkirche Baiersbronn",
                 "Michaelskirche (MIKI)": "Michaelskirche Friedrichstal",
                 "Johanneskirche (JOKI)": "Johanneskirche Tonbach",
                 "Gemeindehaus Großer Saal": "Gemeindehaus Baiersbronn",
-                "Gemeindehaus Kleiner Saal" : "Gemeindehaus Baiersbronn",
+                "Gemeindehaus Kleiner Saal": "Gemeindehaus Baiersbronn",
             }
 
             for old, new in replacements.items():
-                data[id]["location"] = data[id]["location"].replace(old,new)
+                data["location"] = data["location"].replace(old, new)
+            entries.append(data)
 
-        df_raw: pd.DataFrame = pd.DataFrame(data).transpose()
+        df_raw: pd.DataFrame = pd.DataFrame(entries)
         df_data_pivot = (
             df_raw.pivot_table(
                 values=["shortTime", "shortName", "predigt", "specialService"],
@@ -482,10 +504,10 @@ def download_plan_months():
                 selected_calendars=selected_calendars,
                 available_resources=available_resources,
                 selected_resources=selected_resources,
-                available_program_services= available_program_services,
+                available_program_services=available_program_services,
                 selected_program_services=selected_program_services,
-                available_music_services = available_music_services,
-                selected_music_services = selected_music_services,
+                available_music_services=available_music_services,
+                selected_music_services=selected_music_services,
                 from_date=from_date,
                 to_date=to_date,
             )
