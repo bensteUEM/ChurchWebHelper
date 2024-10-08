@@ -212,23 +212,26 @@ def get_plan_months_xlsx(data: pd.DataFrame, from_date: datetime, filename:str) 
     row_offsets = [0,0,0,0,1,1,1,1]
     column_references = ["shortTime", "predigt_lastname", "abendmahl", "organist_lastname", None, None, 'taufe',"musikteam_lastname"]
     
-    location_offset = 0
+    location_column_offset = 0
     for index, df_row in data.iterrows():
         worksheet.write(row,0,df_row["shortDay"].iloc[0])
         worksheet.write(row+1,0,df_row["specialDayName"].iloc[0])
 
+        max_events_per_date = max([len(i) for i in df_row[slice(None),"shortTime"]])
         for row_offset, column_offset, column_value in zip(row_offsets, column_offsets ,column_references):
             for location_index, location in enumerate(locations):
-                location_offset = location_index * NUMBER_OF_COLUMNS_PER_BLOCK
-                value = ""
-                if column_value in df_row[location].index:
-                    if len(df_row[location, column_value]) > 0:
-                        value = ", ".join(df_row[location, column_value])
-                worksheet.write(row+row_offset,
-                                1+location_offset+column_offset,
-                                str(value))
+                location_column_offset = location_index * NUMBER_OF_COLUMNS_PER_BLOCK
 
-        row +=2
+                for event_per_day_offset in range(0,max_events_per_date):
+                    value = ""
+                    if column_value in df_row[location].index:
+                        if len(df_row[location, column_value]) > event_per_day_offset:
+                            value = df_row[location, column_value][event_per_day_offset]
+                    worksheet.write(row+row_offset+event_per_day_offset*2,
+                                    1+location_column_offset+column_offset,
+                                    str(value))
+
+        row += 2*max_events_per_date
 
     return workbook
 
