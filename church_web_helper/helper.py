@@ -375,8 +375,8 @@ def get_primary_resource(appointment_id:int,
         shortened resource representation
     """
     bookings = api.get_bookings(resource_ids=considered_resource_ids,
-                                _from=relevant_date,
-                                _to=relevant_date,
+                                from_=relevant_date,
+                                to_=relevant_date,
                                 appointment_id=appointment_id)
     locations = {booking["base"]["resource"]["name"] for booking in bookings}
 
