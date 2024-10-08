@@ -168,8 +168,9 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     return document
 
 
-
-def get_plan_months_xlsx(data: pd.DataFrame, from_date: datetime, filename:str) -> xlsxwriter.Workbook:
+def get_plan_months_xlsx(
+    data: pd.DataFrame, from_date: datetime, filename: str
+) -> xlsxwriter.Workbook:
     """Function which converts a Dataframe into a XLXs used as admin overview printout
 
     Args:
@@ -182,7 +183,7 @@ def get_plan_months_xlsx(data: pd.DataFrame, from_date: datetime, filename:str) 
     """
 
     workbook = xlsxwriter.Workbook(filename)
-    
+
     heading = f"{from_date.strftime("%B %Y")}"
     worksheet = workbook.add_worksheet(name=heading)
 
@@ -192,12 +193,16 @@ def get_plan_months_xlsx(data: pd.DataFrame, from_date: datetime, filename:str) 
 
     NUMBER_OF_COLUMNS_PER_BLOCK = 4
     for column_no, content in enumerate(locations):
-        worksheet.write(row,column_no* NUMBER_OF_COLUMNS_PER_BLOCK+ 1, content)
-        for offset, header in enumerate(["Uhr","Prediger", "Abm", "Organist"]):
-            worksheet.write(row+1,1+column_no*NUMBER_OF_COLUMNS_PER_BLOCK+ offset, header)
-        for offset, header in enumerate(["zeit","","Taufe", "Musik"]):
-            worksheet.write(row+2,1+column_no*NUMBER_OF_COLUMNS_PER_BLOCK+ offset, header)
-    
+        worksheet.write(row, column_no * NUMBER_OF_COLUMNS_PER_BLOCK + 1, content)
+        for offset, header in enumerate(["Uhr", "Prediger", "Abm", "Organist"]):
+            worksheet.write(
+                row + 1, 1 + column_no * NUMBER_OF_COLUMNS_PER_BLOCK + offset, header
+            )
+        for offset, header in enumerate(["zeit", "", "Taufe", "Musik"]):
+            worksheet.write(
+                row + 2, 1 + column_no * NUMBER_OF_COLUMNS_PER_BLOCK + offset, header
+            )
+
     row += 3
 
     """
@@ -207,33 +212,47 @@ def get_plan_months_xlsx(data: pd.DataFrame, from_date: datetime, filename:str) 
          |         | Taufe | Musik
     
     """
-    
-    column_offsets = [0,1,2,3,0,1,2,3]
-    row_offsets = [0,0,0,0,1,1,1,1]
-    column_references = ["shortTime", "predigt_lastname", "abendmahl", "organist_lastname", None, None, 'taufe',"musikteam_lastname"]
-    
+
+    column_offsets = [0, 1, 2, 3, 0, 1, 2, 3]
+    row_offsets = [0, 0, 0, 0, 1, 1, 1, 1]
+    column_references = [
+        "shortTime",
+        "predigt_lastname",
+        "abendmahl",
+        "organist_lastname",
+        None,
+        None,
+        "taufe",
+        "musikteam_lastname",
+    ]
+
     location_column_offset = 0
     for index, df_row in data.iterrows():
-        worksheet.write(row,0,df_row["shortDay"].iloc[0])
-        worksheet.write(row+1,0,df_row["specialDayName"].iloc[0])
+        worksheet.write(row, 0, df_row["shortDay"].iloc[0])
+        worksheet.write(row + 1, 0, df_row["specialDayName"].iloc[0])
 
-        max_events_per_date = max([len(i) for i in df_row[slice(None),"shortTime"]])
-        for row_offset, column_offset, column_value in zip(row_offsets, column_offsets ,column_references):
+        max_events_per_date = max([len(i) for i in df_row[slice(None), "shortTime"]])
+        for row_offset, column_offset, column_value in zip(
+            row_offsets, column_offsets, column_references
+        ):
             for location_index, location in enumerate(locations):
                 location_column_offset = location_index * NUMBER_OF_COLUMNS_PER_BLOCK
 
-                for event_per_day_offset in range(0,max_events_per_date):
+                for event_per_day_offset in range(0, max_events_per_date):
                     value = ""
                     if column_value in df_row[location].index:
                         if len(df_row[location, column_value]) > event_per_day_offset:
                             value = df_row[location, column_value][event_per_day_offset]
-                    worksheet.write(row+row_offset+event_per_day_offset*2,
-                                    1+location_column_offset+column_offset,
-                                    str(value))
+                    worksheet.write(
+                        row + row_offset + event_per_day_offset * 2,
+                        1 + location_column_offset + column_offset,
+                        str(value),
+                    )
 
-        row += 2*max_events_per_date
+        row += 2 * max_events_per_date
 
     return workbook
+
 
 def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
     """Flattens a df with multiple same index entries to list entries
