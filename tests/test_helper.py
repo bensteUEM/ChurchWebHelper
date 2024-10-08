@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from typing import Tuple
 import pandas as pd
 import pytest
 import docx
@@ -216,7 +217,7 @@ def test_compare_docx_files():
 
 def compare_docx_files(
     document1: docx.Document, document2: docx.Document
-) -> (bool, str):
+) -> Tuple[bool, str]:
     """Compare both text and table content of two docx files.
 
     Args:

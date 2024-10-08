@@ -447,19 +447,23 @@ def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAP
     for group_id in relevant_groups:
         group_member_ids = [group["personId"] for group in api.get_group_members(group_id=group_id)]
         if person_id in group_member_ids:
-            group_name = api.get_groups(group_id=group_id)["name"] #TODO https://github.com/bensteUEM/ChurchToolsAPI/issues/111 - add list index once API is fixed
+            group_name = api.get_groups(group_id=group_id)[0]["name"]
             break
     else:
         group_name = ""
 
     # add 'IN' suffix to first part of group member in order to apply german gender for most common cases
     person = api.get_persons(ids=[person_id])[0]
-    if False: #person.get('sexId'):
-        #TODO #16 - make use of metadata to map sexID to female
-        if person["sexId"] == "female" and len(group_name)>0:
-            parts = group_name.split(" ")
-            parts[0] = parts[0]+"in"
-            group_name = " ".join(group_name)
+
+    gender_map = {
+            item["id"]: item["name"]
+            for item in api.get_options()["sex"]["options"]
+    }
+
+    if gender_map[person["sexId"]] == "sex.female" and len(group_name)>0:
+        parts = group_name.split(" ")
+        part1_gendered = parts[0]+"in"
+        group_name = " ".join([part1_gendered]+parts[1:])
     else:
         logger.warning("no sexId applied because its unavailable with tech user in API - see support ticket 130953")
 
@@ -507,13 +511,12 @@ def get_group_name_services(calendar_ids : list[int],
         relevant_group_results = [service["groupIds"] for service in api.get_event_masterdata()["services"] if service['id'] in considered_music_services]
         considered_group_ids = {int(group_id) for group_result in relevant_group_results for group_id in group_result.split(',')}
         for person in persons:
-            group_assignemnts = api.get_groups_members(group_ids=considered_group_ids, #TODO #16 is relevant group ids ignored here?
+            group_assignemnts = api.get_groups_members(group_ids=considered_group_ids,
                                             grouptype_role_ids=considered_grouptype_role_ids,
                                             person_ids=[int(person['domainIdentifier'])])
-            relevant_group_ids = [group['groupId'] for group in group_assignemnts if group['groupId'] in considered_group_ids] #TODO #16 WORKAROUND because previous filter not applied
-            #TODO workaround required because of https://github.com/bensteUEM/ChurchToolsAPI/issues/112
+            relevant_group_ids = [group['groupId'] for group in group_assignemnts]
             for group_id in relevant_group_ids:
-                group = api.get_groups(group_id=group_id)
+                group = api.get_groups(group_id=group_id)[0]
                 result_groups.append(group["name"])    
     result_string = "mit "+ " und ".join(result_groups) if len(result_groups) > 0 else ""
     return result_string
