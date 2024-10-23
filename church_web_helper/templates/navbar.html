@@ -23,7 +23,10 @@
           href="/ct/service_workload">CT Service Workload</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/test' %}{% endif %}" aria-current="page" href="/test">Test</a>
+        <a class="nav-link {% if request.path == url_for('ct_contacts') %}{% endif %}" aria-current="page" href="{{url_for('ct_contacts')}}">Contacts</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.path == url_for('test') %}{% endif %}" aria-current="page" href="{{url_for('test')}}">Test</a>
       </li>
     </ul>
     <ul class="navbar-nav ml-auto">

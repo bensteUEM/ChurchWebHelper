@@ -38,6 +38,7 @@ pyproject_toml_content = {
                 "matplotlib": "^3.9.1",
                 "pandas": "^2.2.2",
                 "toml": "^0.10.2",
+                "vobject" : "^0.9.8",
             },
             "group": {
                 "dev": {

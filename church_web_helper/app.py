@@ -24,6 +24,7 @@ from dateutil.relativedelta import relativedelta
 import urllib
 
 import toml
+import vobject
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -623,3 +624,54 @@ def ct_service_workload():
         available_persons=available_persons,
         selected_persons=selected_persons,
     )
+
+
+@app.route("/ct/contacts",  methods=["GET",])
+def ct_contacts():
+    """Vcard export for ChurchTools contacts.
+    Generates VCards for Name / Phone number for all available persons
+    """
+    if request.args.get("download"):
+
+        persons = session["ct_api"].get_persons()
+        vcards = []
+        for person in persons:
+            vcard = vobject.vCard()
+
+            # Add a full name
+            vcard.add('fn')
+            vcard.fn.value = f"{person["firstName"]} {person["lastName"]}"
+
+            # Add a HOME phone number
+            home_tel = vcard.add('tel')
+            home_tel.value = person.get("phonePrivate")
+            home_tel.type_param = 'HOME'
+
+            # Add a WORK phone number
+            work_tel = vcard.add('tel')
+            work_tel.value = person.get("phoneWork")
+            work_tel.type_param = 'WORK'
+
+            # Add a CELL phone number
+            cell_tel = vcard.add('tel')
+            cell_tel.value = person.get("mobile")
+            cell_tel.type_param = 'CELL'
+            
+            vcards.append(vcard)
+
+        # Create an in-memory bytes buffer
+        output = io.BytesIO()
+
+        # Write each vCard to the buffer
+        for vcard in vcards:
+            output.write(vcard.serialize().encode('utf-8'))
+
+        # Set the file pointer to the beginning of the buffer
+        output.seek(0)
+
+        # Send the file as a download
+        return send_file(output, as_attachment=True, download_name='ct_contacts.vcf', mimetype='text/vcard')
+
+    
+    return render_template("ct_contacts.html")
+
