@@ -11,6 +11,16 @@ Two environment variables can be used to simplify usage by prepopulating respect
 
 These can be set when launching the container with docker
 
+## ChurchTools Login
+A valid churchtools login (with username / password) is required in ordert to perform most actions.
+Opening a page might redirect automatically to an authorization page unless username / password is provided with BasicAuth.
+
+Username & Password was chosen in favor of token login in order to ease up individual user logins 
+
+## Communi Login
+Some pages require a valid Communi API login
+If the session was not authorized before, requests will be redirected to a login page
+
 # Development use
 this project was created using VS Code on Ubuntu
 to simplify version control and use by others respective configurations are included in the git repo
