@@ -171,7 +171,7 @@ def communi_events():
 
     reference_day = datetime.today()
     event_ids_past = get_x_day_event_ids(session["ct_api"], reference_day, -7)
-    event_ids_future = get_x_day_event_ids(session["ct_api"], reference_day, 15)
+    event_ids_future = get_x_day_event_ids(session["ct_api"], reference_day, 25)
 
     event_ids = event_ids_past + event_ids_future
     # TODO unfinished code! #3 - keep relevant only ...
