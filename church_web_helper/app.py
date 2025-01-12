@@ -487,7 +487,7 @@ def ct_service_workload():
                         ),
                         "Monat": datetime.strptime(
                             event["startDate"], "%Y-%m-%dT%H:%M:%SZ"
-                        ).strftime("%B"),
+                        ).strftime("%m %B"),
                         "Eventname": event["name"],
                         "Dienst": service["serviceId"],
                         "Name": service["name"],
@@ -589,13 +589,13 @@ def ct_service_workload():
             .unstack()
             .fillna(0)
             .transpose()
-            .sort_index(ascending=False)
+            .sort_index(ascending=True)
         )
         df_table_2 = (
             df_table_1.rolling(window=len(df_table_1), min_periods=1)
             .sum()
             .astype(int)
-            .sort_index(ascending=False)
+            .sort_index(ascending=True)
         )
         tables = {
             "Monatsübersicht": df_table_1.to_html(
