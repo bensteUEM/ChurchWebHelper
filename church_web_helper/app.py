@@ -209,7 +209,7 @@ def communi_events():
 def events():
     if request.method == "GET":
         session["serviceGroups"] = session["ct_api"].get_event_masterdata(
-            type="serviceGroups", returnAsDict=True
+            resultClass="serviceGroups", returnAsDict=True
         )
 
         events_temp = session["ct_api"].get_events()
@@ -408,12 +408,12 @@ def ct_service_workload():
 
     available_service_categories = {
         serviceGroup["id"]: serviceGroup["name"]
-        for serviceGroup in session["ct_api"].get_event_masterdata(type="serviceGroups")
+        for serviceGroup in session["ct_api"].get_event_masterdata(resultClass="serviceGroups")
     }
     available_service_types_by_category = {
         key: [] for key in available_service_categories
     }
-    for service in session["ct_api"].get_event_masterdata(type="services"):
+    for service in session["ct_api"].get_event_masterdata(resultClass="services"):
         available_service_types_by_category[service["serviceGroupId"]].append(
             {"id": service["id"], "name": service["name"]}
         )
