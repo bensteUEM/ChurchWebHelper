@@ -1,30 +1,29 @@
 import ast
 import base64
 import io
-import logging
 import locale
+import logging
 import os
-from datetime import datetime, time, timedelta
 import re
-from matplotlib import pyplot as plt
-import pandas as pd
-
-from flask import Flask, render_template, request, redirect, session, send_file, url_for
-
-from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
-from communi_api.communi_api import CommuniApi
-from communi_api.churchToolsActions import (
-    delete_event_chats,
-    create_event_chats,
-    get_x_day_event_ids,
-    generate_group_name_for_event,
-)
-from flask_session import Session
-from dateutil.relativedelta import relativedelta
 import urllib
+from datetime import datetime, time, timedelta
 
+import pandas as pd
 import toml
 import vobject
+from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
+from communi_api.churchToolsActions import (
+    create_event_chats,
+    delete_event_chats,
+    generate_group_name_for_event,
+    get_x_day_event_ids,
+)
+from communi_api.communi_api import CommuniApi
+from dateutil.relativedelta import relativedelta
+from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from matplotlib import pyplot as plt
+
+from flask_session import Session
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -675,3 +674,43 @@ def ct_contacts():
     
     return render_template("ct_contacts.html")
 
+
+@app.route(
+    "/ct/posts",
+    methods=[
+        "GET",
+    ],
+)
+def ct_posts():
+    """Posts to Communi from ChurchTools Beiträge.
+    Used to assist with reposting entries from ChurchTools to Communi
+    """
+    posts = session.get("ct_api").get_posts()
+
+    if action := request.args.get("action"):
+        post_id = request.args.get("post_id", type=int)
+        posts = [post for post in posts if post["id"] == post_id]
+        post = posts[0]
+
+        GROUP_ID = 12508
+        base_url = re.match(r'^(https?:\/\/[^/]+)(?:.*)',post.get("group").get('apiUrl')).group(1)
+
+        session["communi_api"].recommendation(
+            group_id=GROUP_ID,
+            title=post.get("title"),
+            description=post.get("content"),
+            post_date=datetime.strptime(
+                post.get("publishedDate"), "%Y-%m-%dT%H:%M:%SZ"
+            ).astimezone(),
+            pic_url=post.get("images")[0] if len(post.get("images")) > 0 else "",
+            link=f"{base_url}/posts/{post.get('id')}",
+            is_official=False,
+        )
+
+        return render_template(
+            "ct_posts.html",
+            posts=posts,
+            message=f"Reposted {post.get('title')} to Communi",
+        )
+
+    return render_template("ct_posts.html", posts=posts, message=None)
