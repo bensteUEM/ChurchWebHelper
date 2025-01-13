@@ -455,21 +455,14 @@ def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAP
     # add 'IN' suffix to first part of group member in order to apply german gender for most common cases
     person = api.get_persons(ids=[person_id])[0]
 
-    gender_map = {
-            item["id"]: item["name"]
-            for item in api.get_options()["sex"]["options"]
-    }
+    gender_map = api.get_persons_masterdata(resultClass="sexes", returnAsDict=True)
 
     if gender_map[person["sexId"]] == "sex.female" and len(group_name)>0:
         parts = group_name.split(" ")
         part1_gendered = parts[0]+"in"
         group_name = " ".join([part1_gendered]+parts[1:])
-    else:
-        logger.warning("no sexId applied because its unavailable with tech user in API - see support ticket 130953")
-
+    
     return group_name
-
-    # TODO check if "person" / Title prefix with mass change might be a better idea ...
 
 def get_group_name_services(calendar_ids : list[int],
                         appointment_id:int,
@@ -509,7 +502,7 @@ def get_group_name_services(calendar_ids : list[int],
         service_assignments = api.get_persons_with_service(eventId=relevant_event['id'],serviceId=service)
         persons = [service['person'] for service in service_assignments]
         relevant_group_results = [service["groupIds"] for service in api.get_event_masterdata()["services"] if service['id'] in considered_music_services]
-        considered_group_ids = {int(group_id) for group_result in relevant_group_results for group_id in group_result.split(',')}
+        considered_group_ids = {int(group_id) for group_result in relevant_group_results for group_id in group_result}
         for person in persons:
             group_assignemnts = api.get_groups_members(group_ids=considered_group_ids,
                                             grouptype_role_ids=considered_grouptype_role_ids,
