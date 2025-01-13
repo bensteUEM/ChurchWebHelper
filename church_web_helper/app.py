@@ -294,6 +294,11 @@ def download_plan_months():
         ],
         "program_service_group_id": 1,
         "music_service_group_id": 4,
+        "predigt_service_ids" : [1],
+        "organist_service_ids" : [2,87],
+        "musikteam_service_ids" : [10],
+        "taufe_service_ids" : [127],
+        "abendmahl_service_ids" : [100],
     }
 
     available_calendars = {
@@ -407,6 +412,8 @@ def download_plan_months():
                     item["startDate"], "%Y-%m-%d"
                 ).astimezone()
 
+            event = session["ct_api"].get_event_by_calendar_appointment(appointment_id=item["id"], start_date=item["startDate"])
+
             # Simple attributes
             data = {
                 "caption": item["caption"],
@@ -435,6 +442,7 @@ def download_plan_months():
                 considered_groups=DEFAULTS.get("selected_title_prefix_groups"),
             )
 
+            # Special Service - usually high-level indication of music
             data["specialService"] = get_group_name_services(
                 calendar_ids=selected_calendars,
                 appointment_id=item["id"],
@@ -468,12 +476,45 @@ def download_plan_months():
 
             for old, new in replacements.items():
                 data["location"] = data["location"].replace(old, new)
+
+            # Individual services with lastnames for Table overview
+            predigt = []
+            for service_id in DEFAULTS.get("predigt_service_ids",[]):
+                predigt.extend(session["ct_api"].get_persons_with_service(eventId=event['id'], serviceId=service_id))
+            data["predigt_lastname"] = ", ".join([service_assignment['person']['domainAttributes']['lastName'] for service_assignment in predigt if service_assignment.get('personId')])
+            
+            organist = []
+            for service_id in DEFAULTS.get("organist_service_ids",[]):
+                organist.extend(session["ct_api"].get_persons_with_service(eventId=event['id'], serviceId=service_id))
+            data["organist_lastname"] = ", ".join([service_assignment['person']['domainAttributes']['lastName'] for service_assignment in organist if service_assignment.get('personId')])
+    
+            musikteam = []
+            for service_id in DEFAULTS.get("musikteam_service_ids",[]):
+                musikteam.extend(session["ct_api"].get_persons_with_service(eventId=event['id'], serviceId=service_id))
+            data["musikteam_lastname"] = ", ".join([service_assignment['person']['domainAttributes']['lastName'] for service_assignment in musikteam if service_assignment.get('personId')])
+    
+            taufe = []
+            for service_id in DEFAULTS.get("taufe_service_ids",[]):
+                taufe.extend(session["ct_api"].get_persons_with_service(eventId=event['id'], serviceId=service_id))
+            taufnamen = []
+            for service_assignment in taufe:
+                if service_assignment.get('personId'):
+                    taufnamen.append(service_assignment['person']['domainAttributes']['lastName'] )
+                else:
+                    taufnamen.append(service_assignment['name'])
+            data["taufe"] = "Taufe "+ ", ".join(taufnamen) if len(taufnamen)>0 else ""
+
+            abendmahl = []
+            for service_id in DEFAULTS.get("abendmahl_service_ids",[]):
+                abendmahl.extend(session["ct_api"].get_persons_with_service(eventId=event['id'], serviceId=service_id))
+            data["abendmahl"] = "Abendmahl" if len(abendmahl)>0 else ""
+
             entries.append(data)
 
         df_raw: pd.DataFrame = pd.DataFrame(entries)
         df_data_pivot = (
             df_raw.pivot_table(
-                values=["shortTime", "shortName", "predigt", "specialService"],
+                values=["shortTime", "shortName", "predigt", "specialService","taufe","abendmahl","musikteam_lastname","predigt_lastname","organist_lastname"],
                 index=["startDate", "shortDay", "specialDayName"],
                 columns=["location"],
                 aggfunc=list,
