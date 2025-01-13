@@ -6,10 +6,10 @@ import locale
 import logging
 import logging.config
 import os
-from pathlib import Path
 import re
 import urllib
 from datetime import datetime, time, timedelta
+from pathlib import Path
 
 import pandas as pd
 import toml
@@ -43,20 +43,14 @@ app.secret_key = os.urandom(16)
 
 config = {"SESSION_PERMANENT": False, "SESSION_TYPE": "filesystem"}
 
-if "CT_DOMAIN" in os.environ.keys():
-    config["CT_DOMAIN"] = os.environ["CT_DOMAIN"]
-else:
-    config["CT_DOMAIN"] = ""
+config["CT_DOMAIN"] = os.environ.get("CT_DOMAIN", "")
 
-if "COMMUNI_SERVER" in os.environ.keys():
-    app.config["COMMUNI_SERVER"] = os.environ["COMMUNI_SERVER"]
-else:
-    app.config["COMMUNI_SERVER"] = ""
+app.config["COMMUNI_SERVER"] = os.environ.get("COMMUNI_SERVER", "")
 
-if "VERSION" in os.environ.keys():
+if "VERSION" in os.environ:
     config["VERSION"] = os.environ["VERSION"]
 else:
-    with open("pyproject.toml", "r") as f:
+    with open("pyproject.toml") as f:
         pyproject_data = toml.load(f)
     config["VERSION"] = pyproject_data["tool"]["poetry"]["version"]
 
@@ -74,26 +68,22 @@ def index():
 @app.before_request
 def check_session():
     """Session variable should contain ct_api and communi_api.
+
     If not a redirect to respective login pages should be executed
     """
-    if request.endpoint != "login_ct" and request.endpoint != "login_communi": 
+    if request.endpoint not in ("login_ct", "login_communi"):
         #Check CT Login
-        if not session.get("ct_api"):
-            return redirect(url_for("login_ct"))
-        elif not session["ct_api"].who_am_i():
+        if not session.get("ct_api") or not session["ct_api"].who_am_i():
             return redirect(url_for("login_ct"))
         #Check Communi Login
-        if not session.get("communi_api"):
+        if not session.get("communi_api") or not session["communi_api"].who_am_i():
             return redirect(url_for("login_communi"))
-        elif not session["communi_api"].who_am_i():
-            return redirect(url_for("login_communi"))
+        return None
+    return None
 
 @app.route("/ct/login", methods=["GET", "POST"])
 def login_ct():
-    """
-    Update login information for CT
-    :return:
-    """
+    """Update login information for CT."""
     if request.method == "POST":
         user = request.form["ct_user"]
         password = request.form["ct_password"]
@@ -108,22 +98,15 @@ def login_ct():
         return render_template(
             "login_churchtools.html", error=error, ct_domain=app.config["CT_DOMAIN"]
         )
-    else:
-        if "ct_api" not in session:
-            user = None
-        else:
-            user = session["ct_api"].who_am_i()
-        return render_template(
-            "login_churchtools.html", user=user, ct_domain=app.config["CT_DOMAIN"]
-        )
+    user = None if "ct_api" not in session else session["ct_api"].who_am_i()
+    return render_template(
+        "login_churchtools.html", user=user, ct_domain=app.config["CT_DOMAIN"]
+    )
 
 
 @app.route("/communi/login", methods=["GET", "POST"])
 def login_communi():
-    """
-    Update login information for Communi Login
-    :return:
-    """
+    """Update login information for Communi Login."""
     if request.method == "POST":
         communi_server = request.form["communi_server"]
         communi_token = request.form["communi_token"]
@@ -142,14 +125,10 @@ def login_communi():
         return render_template(
             "login_communi.html", error=error, communi_server=communi_server
         )
-    else:
-        if "communi_api" not in session:
-            user = None
-        else:
-            user = session["communi_api"].who_am_i()
-        return render_template(
-            "login_communi.html", user=user, communi_server=app.config["COMMUNI_SERVER"]
-        )
+    user = None if "communi_api" not in session else session["communi_api"].who_am_i()
+    return render_template(
+        "login_communi.html", user=user, communi_server=app.config["COMMUNI_SERVER"]
+    )
 
 
 @app.route("/main")
@@ -165,10 +144,9 @@ def test():
 
 @app.route("/communi/events")
 def communi_events():
-    """
-    This page is used to admin communi groups based on churchtools planning information
-    It will list all events from past 14 and future 15 days and show their link if they exist
+    """This page is used to admin communi groups based on churchtools planning information.
 
+    It will list all events from past 14 and future 15 days and show their link if they exist
     if event_id and action exist as GET param respective delete or update action will be executed
     """
     event_id = request.args.get("event_id")
@@ -196,10 +174,7 @@ def communi_events():
 
         group_name = generate_group_name_for_event(session["ct_api"], id)
         group = session["communi_api"].getGroups(name=group_name)
-        if len(group) == 0:
-            group_id = None
-        else:
-            group_id = group["id"]
+        group_id = None if len(group) == 0 else group["id"]
 
         event_short = {
             "id": id,
@@ -212,9 +187,10 @@ def communi_events():
     if request.method == "GET":
         return render_template("communi_events.html", events=events, test=None)
 
-    elif request.method == "POST":
-        if "event_id" not in request.form.keys():
-            redirect("/communi/events")
+    if request.method == "POST" and "event_id" not in request.form:
+        redirect("/communi/events")
+        return None
+    return None
 
 
 @app.route("/events", methods=["GET", "POST"])
@@ -228,7 +204,7 @@ def events():
         # events_temp.extend(session['ct_api'].get_events(eventId=2147))  # debugging
         # events_temp.extend(session['ct_api'].get_events(eventId=2129))  #
         # debugging
-        logger.debug("{} Events loaded".format(len(events_temp)))
+        logger.debug(f"{len(events_temp)} Events loaded")
 
         event_choices = []
         session["event_agendas"] = {}
@@ -244,7 +220,7 @@ def events():
                 event = {"id": event["id"], "label": datetext + "\t" + event["name"]}
                 event_choices.append(event)
 
-        logger.debug("{} Events kept because schedule exists".format(len(events_temp)))
+        logger.debug(f"{len(events_temp)} Events kept because schedule exists")
 
         return render_template(
             "events.html",
@@ -252,18 +228,18 @@ def events():
             event_choices=event_choices,
             service_groups=session["serviceGroups"],
         )
-    elif request.method == "POST":
-        if "event_id" not in request.form.keys():
+    if request.method == "POST":
+        if "event_id" not in request.form:
             redirect("/events")
         event_id = int(request.form["event_id"])
-        if "submit_docx" in request.form.keys():
+        if "submit_docx" in request.form:
             event = session["events"][event_id]
             agenda = session["event_agendas"][event_id]
 
             selectedServiceGroups = {
                 key: value
                 for key, value in session["serviceGroups"].items()
-                if "service_group {}".format(key) in request.form
+                if f"service_group {key}" in request.form
             }
 
             document = session["ct_api"].get_event_agenda_docx(
@@ -277,21 +253,22 @@ def events():
             os.remove(filename)
             return response
 
-        elif "submit_communi" in request.form.keys():
+        if "submit_communi" in request.form:
             error = "Communi Group update not yet implemented"
         else:
             error = "Requested function not detected in request"
         return render_template("main.html", error=error)
+    return None
 
 
 @app.route("/ct/calendar_appointments")
 def ct_calendar_appointments():
-    """
-    page which can be used to display ChurchTools calendar appointments for IFrame use
+    """Page which can be used to display ChurchTools calendar appointments for IFrame use.
+
     Use get param calendar_id=2 or similar to define a calendar
     Use get param days to specify the number of days
     Use optional get param services to specify a , separated list of service IDs to include
-    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using ,
+    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using 
     """
     # default params if not specified
     DEFAULT_CALENDAR_ID = 2
@@ -374,10 +351,9 @@ def ct_calendar_appointments():
                 from_=date,
                 to_=date + timedelta(days=1),
             )
-            if special_names is not None:
-                if len(special_names) > 0:
-                    special_name = special_names[0]["caption"]
-                    day = f"{day} ({special_name})"
+            if special_names is not None and len(special_names) > 0:
+                special_name = special_names[0]["caption"]
+                day = f"{day} ({special_name})"
 
         time = date.astimezone().strftime("%H:%M")
 
@@ -392,14 +368,11 @@ def ct_calendar_appointments():
                 if service["serviceId"] in services
             ]
             persons = [person for person in persons if person is not None]
-            if len(persons) > 0:
-                persons = ", ".join(persons)
-            else:
-                persons = None
+            persons = ", ".join(persons) if len(persons) > 0 else None
         else:
             persons = None
 
-        if day not in data.keys():
+        if day not in data:
             data[day] = []
 
         data[day].append({"time": time, "caption": caption, "persons": persons})
@@ -514,7 +487,7 @@ def ct_service_workload():
 
     # prepare mapping for requested service category and services only
     relevant_map = {}
-    for servicegroup_id, service_types in available_service_types_by_category.items():
+    for service_types in available_service_types_by_category.values():
         for service_type in service_types:
             if service_type["id"] in selected_service_types:
                 relevant_map[service_type["id"]] = service_type["name"]
@@ -638,9 +611,10 @@ def ct_service_workload():
     )
 
 
-@app.route("/ct/contacts",  methods=["GET",])
+@app.route("/ct/contacts",  methods=["GET"])
 def ct_contacts():
     """Vcard export for ChurchTools contacts.
+
     Generates VCards for Name / Phone number for all available persons
     """
     if request.args.get("download"):
@@ -651,24 +625,24 @@ def ct_contacts():
             vcard = vobject.vCard()
 
             # Add a full name
-            vcard.add('fn')
+            vcard.add("fn")
             vcard.fn.value = f"{person["firstName"]} {person["lastName"]}"
 
             # Add a HOME phone number
-            home_tel = vcard.add('tel')
+            home_tel = vcard.add("tel")
             home_tel.value = person.get("phonePrivate")
-            home_tel.type_param = 'HOME'
+            home_tel.type_param = "HOME"
 
             # Add a WORK phone number
-            work_tel = vcard.add('tel')
+            work_tel = vcard.add("tel")
             work_tel.value = person.get("phoneWork")
-            work_tel.type_param = 'WORK'
+            work_tel.type_param = "WORK"
 
             # Add a CELL phone number
-            cell_tel = vcard.add('tel')
+            cell_tel = vcard.add("tel")
             cell_tel.value = person.get("mobile")
-            cell_tel.type_param = 'CELL'
-            
+            cell_tel.type_param = "CELL"
+
             vcards.append(vcard)
 
         # Create an in-memory bytes buffer
@@ -676,15 +650,15 @@ def ct_contacts():
 
         # Write each vCard to the buffer
         for vcard in vcards:
-            output.write(vcard.serialize().encode('utf-8'))
+            output.write(vcard.serialize().encode("utf-8"))
 
         # Set the file pointer to the beginning of the buffer
         output.seek(0)
 
         # Send the file as a download
-        return send_file(output, as_attachment=True, download_name='ct_contacts.vcf', mimetype='text/vcard')
+        return send_file(output, as_attachment=True, download_name="ct_contacts.vcf", mimetype="text/vcard")
 
-    
+
     return render_template("ct_contacts.html")
 
 
@@ -696,7 +670,7 @@ def ct_contacts():
 )
 def ct_posts():
     """Posts to Communi from ChurchTools Beiträge.
-    Used to assist with reposting entries from ChurchTools to Communi
+    Used to assist with reposting entries from ChurchTools to Communi.
     """
     posts = session.get("ct_api").get_posts()
 
@@ -706,7 +680,7 @@ def ct_posts():
         post = posts[0]
 
         GROUP_ID = 12508
-        base_url = re.match(r'^(https?:\/\/[^/]+)(?:.*)',post.get("group").get('apiUrl')).group(1)
+        base_url = re.match(r"^(https?:\/\/[^/]+)(?:.*)",post.get("group").get("apiUrl")).group(1)
 
         session["communi_api"].recommendation(
             group_id=GROUP_ID,

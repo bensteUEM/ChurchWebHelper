@@ -1,6 +1,6 @@
 from church_web_helper.app import *
 
-if __name__ == '__main__':
-    ct_domain = os.environ.get('ct_domain')
+if __name__ == "__main__":
+    ct_domain = os.environ.get("ct_domain")
     app.ct_domain = ct_domain
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host="0.0.0.0")
