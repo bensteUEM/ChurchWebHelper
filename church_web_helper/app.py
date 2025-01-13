@@ -69,17 +69,36 @@ def index():
 def check_session():
     """Session variable should contain ct_api and communi_api.
 
+    if BasicAuth is provided ct_api is initialzed with domain from config 
     If not a redirect to respective login pages should be executed
     """
+
+    username, password = None, None
+
+    if auth_header := request.headers.get('Authorization'):
+        if auth_header and auth_header.startswith('Basic '):
+            # Strip "Basic " from the beginning of the header and decode the rest
+            auth_encoded = auth_header.split(' ')[1]
+            auth_decoded = base64.b64decode(auth_encoded).decode('utf-8')
+            
+            # Split the decoded string into username and password
+            username, password = auth_decoded.split(':', 1)
+
     if request.endpoint not in ("login_ct", "login_communi"):
-        #Check CT Login
-        if not session.get("ct_api") or not session["ct_api"].who_am_i():
+        #Check CT Login - required for all pages
+        if not session.get("ct_api"):
+            if username and password:
+                session["ct_api"] = CTAPI(app.config["CT_DOMAIN"], ct_user=username, ct_password=password)
+            else:
+                return redirect(url_for("login_ct"))
+        elif not session["ct_api"].who_am_i():
             return redirect(url_for("login_ct"))
+        
         #Check Communi Login
-        if not session.get("communi_api") or not session["communi_api"].who_am_i():
-            return redirect(url_for("login_communi"))
-        return None
-    return None
+        FUNCTIONS_THAT_REQUIRE_COMMUNI = ["communi_events"]
+        if request.endpoint in FUNCTIONS_THAT_REQUIRE_COMMUNI:
+            if not session.get("communi_api") or not session["communi_api"].who_am_i():
+                return redirect(url_for("login_communi"))
 
 @app.route("/ct/login", methods=["GET", "POST"])
 def login_ct():
