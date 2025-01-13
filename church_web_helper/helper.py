@@ -20,6 +20,7 @@ import xlsxwriter
 
 logger = logging.getLogger(__name__)
 
+
 def get_special_day_name(
     ct_api: CTAPI, special_name_calendar_ids: list[int], date: datetime
 ) -> str:
@@ -191,16 +192,33 @@ def get_plan_months_xlsx(
 
     row = 0
 
-    NUMBER_OF_COLUMNS_PER_BLOCK = 4
-    for column_no, content in enumerate(locations):
-        worksheet.write(row, column_no * NUMBER_OF_COLUMNS_PER_BLOCK + 1, content)
-        for offset, header in enumerate(["Uhr", "Prediger", "Abm", "Organist"]):
+    # setup 3 header lines
+    NUMBER_OF_COLUMNS_PER_LOCATION = 4
+    format_header = workbook.add_format({"bold": True})
+    format_header_b = workbook.add_format({"bold": True, "bottom": 2})
+    format_header_bl = workbook.add_format({"bold": True, "bottom": 2, "left": 2})
+    format_header_l = workbook.add_format({"bold": True, "left": 2})
+
+    for location_index, location_name in enumerate(locations):
+        worksheet.write(
+            row,
+            location_index * NUMBER_OF_COLUMNS_PER_LOCATION + 1,
+            location_name,
+            format_header_l,
+        )
+        for offset, header in enumerate(["Uhr-", "Prediger", "Abm", "Organist"]):
             worksheet.write(
-                row + 1, 1 + column_no * NUMBER_OF_COLUMNS_PER_BLOCK + offset, header
+                row + 1,
+                1 + location_index * NUMBER_OF_COLUMNS_PER_LOCATION + offset,
+                header,
+                format_header_l if offset == 0 else format_header,
             )
         for offset, header in enumerate(["zeit", "", "Taufe", "Musik"]):
             worksheet.write(
-                row + 2, 1 + column_no * NUMBER_OF_COLUMNS_PER_BLOCK + offset, header
+                row + 2,
+                1 + location_index * NUMBER_OF_COLUMNS_PER_LOCATION + offset,
+                header,
+                format_header_bl if offset == 0 else format_header_b,
             )
 
     row += 3
@@ -223,30 +241,42 @@ def get_plan_months_xlsx(
         None,
         None,
         "taufe",
-        "musikteam_lastname",
+        "musik",
     ]
 
+    # Iterate all data rows
     location_column_offset = 0
     for index, df_row in data.iterrows():
-        worksheet.write(row, 0, df_row["shortDay"].iloc[0])
-        worksheet.write(row + 1, 0, df_row["specialDayName"].iloc[0])
+        format_content = workbook.add_format({"bold": True, "border": 1})
+        format_content_b = workbook.add_format({"bold": True, "border": 1, "bottom": 2})
+
+        worksheet.write(row, 0, df_row["shortDay"].iloc[0], format_content)
+        worksheet.write(row + 1, 0, df_row["specialDayName"].iloc[0], format_content_b)
 
         max_events_per_date = max([len(i) for i in df_row[slice(None), "shortTime"]])
         for row_offset, column_offset, column_value in zip(
             row_offsets, column_offsets, column_references
         ):
             for location_index, location in enumerate(locations):
-                location_column_offset = location_index * NUMBER_OF_COLUMNS_PER_BLOCK
+                location_column_offset = location_index * NUMBER_OF_COLUMNS_PER_LOCATION
 
                 for event_per_day_offset in range(0, max_events_per_date):
                     value = ""
                     if column_value in df_row[location].index:
                         if len(df_row[location, column_value]) > event_per_day_offset:
                             value = df_row[location, column_value][event_per_day_offset]
+
+                    cell_format = workbook.add_format({"border": 1})
+                    if row_offset == 1:
+                        cell_format.set_bottom(2)
+                    if column_offset == 0:
+                        cell_format.set_left(2)
+
                     worksheet.write(
                         row + row_offset + event_per_day_offset * 2,
                         1 + location_column_offset + column_offset,
                         str(value),
+                        cell_format,
                     )
 
         row += 2 * max_events_per_date
