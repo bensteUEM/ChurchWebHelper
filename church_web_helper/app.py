@@ -1,9 +1,12 @@
 import ast
 import base64
 import io
+import json
 import locale
 import logging
+import logging.config
 import os
+from pathlib import Path
 import re
 import urllib
 from datetime import datetime, time, timedelta
@@ -24,6 +27,16 @@ from flask import Flask, redirect, render_template, request, send_file, session,
 from matplotlib import pyplot as plt
 
 from flask_session import Session
+
+logger = logging.getLogger(__name__)
+
+config_file = Path("logging_config.json")
+with config_file.open(encoding="utf-8") as f_in:
+    logging_config = json.load(f_in)
+    log_directory = Path(logging_config["handlers"]["file"]["filename"]).parent
+    if not log_directory.exists():
+        log_directory.mkdir(parents=True)
+    logging.config.dictConfig(config=logging_config)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -215,7 +228,7 @@ def events():
         # events_temp.extend(session['ct_api'].get_events(eventId=2147))  # debugging
         # events_temp.extend(session['ct_api'].get_events(eventId=2129))  #
         # debugging
-        logging.debug("{} Events loaded".format(len(events_temp)))
+        logger.debug("{} Events loaded".format(len(events_temp)))
 
         event_choices = []
         session["event_agendas"] = {}
@@ -231,7 +244,7 @@ def events():
                 event = {"id": event["id"], "label": datetext + "\t" + event["name"]}
                 event_choices.append(event)
 
-        logging.debug("{} Events kept because schedule exists".format(len(events_temp)))
+        logger.debug("{} Events kept because schedule exists".format(len(events_temp)))
 
         return render_template(
             "events.html",
