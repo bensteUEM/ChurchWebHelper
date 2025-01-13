@@ -44,6 +44,7 @@ from church_web_helper.helper import (
     deduplicate_df_index_with_lists,
     extract_relevant_calendar_appointment_shortname,
     get_plan_months_docx,
+    get_plan_months_xlsx,
     get_primary_resource,
     get_special_day_name,
     get_group_name_services,
@@ -550,6 +551,16 @@ def download_plan_months():
             document = get_plan_months_docx(df_data, from_date=from_date)
             filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.docx"
             document.save(filename)
+            response = send_file(
+                path_or_file=os.getcwd() + "/" + filename, as_attachment=True
+            )
+            os.remove(filename)
+            return response
+        
+        elif action == "Excel Download":
+            filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.xlsx"
+            workbook = get_plan_months_xlsx(df_data, from_date=from_date, filename=filename)
+            workbook.close()
             response = send_file(
                 path_or_file=os.getcwd() + "/" + filename, as_attachment=True
             )

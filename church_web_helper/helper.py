@@ -16,6 +16,8 @@ import pandas as pd
 from docx.oxml import OxmlElement, ns
 from docx.oxml.ns import qn
 
+import xlsxwriter
+
 logger = logging.getLogger(__name__)
 
 def get_special_day_name(
@@ -165,6 +167,70 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
 
     return document
 
+
+
+def get_plan_months_xlsx(data: pd.DataFrame, from_date: datetime, filename:str) -> xlsxwriter.Workbook:
+    """Function which converts a Dataframe into a XLXs used as admin overview printout
+
+    Args:
+        data: pre-formatted data to be used as base
+        from_date: date used for heading
+        filename: name of the file including extension
+
+    Returns:
+        workbook reference
+    """
+
+    workbook = xlsxwriter.Workbook(filename)
+    
+    heading = f"{from_date.strftime("%B %Y")}"
+    worksheet = workbook.add_worksheet(name=heading)
+
+    locations = set([item[0] for item in data.columns[2:]])
+
+    row = 0
+
+    NUMBER_OF_COLUMNS_PER_BLOCK = 4
+    for column_no, content in enumerate(locations):
+        worksheet.write(row,column_no* NUMBER_OF_COLUMNS_PER_BLOCK+ 1, content)
+        for offset, header in enumerate(["Uhr","Prediger", "Abm", "Organist"]):
+            worksheet.write(row+1,1+column_no*NUMBER_OF_COLUMNS_PER_BLOCK+ offset, header)
+        for offset, header in enumerate(["zeit","","Taufe", "Musik"]):
+            worksheet.write(row+2,1+column_no*NUMBER_OF_COLUMNS_PER_BLOCK+ offset, header)
+    
+    row += 3
+
+    """
+    Each location should have a 2*4 entry by eventwhich looks like this
+
+    TIME | Predigt | ABM   | Organist
+         |         | Taufe | Musik
+    
+    """
+    
+    column_offsets = [0,1,2,3,0,1,2,3]
+    row_offsets = [0,0,0,0,1,1,1,1]
+    column_references = ["shortTime", "predigt_lastname", "abendmahl", "organist_lastname", None, None, 'taufe',"musikteam_lastname"]
+    
+    location_offset = 0
+    for index, df_row in data.iterrows():
+        worksheet.write(row,0,df_row["shortDay"].iloc[0])
+        worksheet.write(row+1,0,df_row["specialDayName"].iloc[0])
+
+        for row_offset, column_offset, column_value in zip(row_offsets, column_offsets ,column_references):
+            for location_index, location in enumerate(locations):
+                location_offset = location_index * NUMBER_OF_COLUMNS_PER_BLOCK
+                value = ""
+                if column_value in df_row[location].index:
+                    if len(df_row[location, column_value]) > 0:
+                        value = ", ".join(df_row[location, column_value])
+                worksheet.write(row+row_offset,
+                                1+location_offset+column_offset,
+                                str(value))
+
+        row +=2
+
+    return workbook
 
 def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
     """Flattens a df with multiple same index entries to list entries

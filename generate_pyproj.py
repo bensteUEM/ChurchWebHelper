@@ -40,6 +40,7 @@ pyproject_toml_content = {
                 "pandas": "^2.2.2",
                 "toml": "^0.10.2",
                 "vobject" : "^0.9.8",
+                "xlsxwriter" : "^3.2.0",
             },
             "group": {
                 "dev": {
