@@ -49,6 +49,7 @@ pyproject_toml_content = {
                         "wheel": "^0.41.2",
                         "setuptools": "^66.1.1",
                         "autopep8": "^2.0.4",
+                        "pytest" : "^8.3.4",
                     }
                 }
             },

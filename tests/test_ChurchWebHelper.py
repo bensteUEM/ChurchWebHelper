@@ -3,7 +3,7 @@ import json
 import logging
 import logging.config
 import os
-import unittest
+import pytest
 from pathlib import Path
 
 from churchtools_api.churchtools_api import ChurchToolsApi
@@ -18,15 +18,14 @@ with config_file.open(encoding="utf-8") as f_in:
         log_directory.mkdir(parents=True)
     logging.config.dictConfig(config=logging_config)
 
-class TestsChurchWebHelper(unittest.TestCase):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+class TestsChurchWebHelper():
+    def setup_class(self, *args, **kwargs) -> None:
 
         if "CT_TOKEN" in os.environ:
             self.ct_token = os.environ["CT_TOKEN"]
             self.ct_domain = os.environ["CT_DOMAIN"]
-            users_string = os.environ["CT_USERS"]
-            self.ct_users = ast.literal_eval(users_string)
+            #users_string = os.environ["CT_USERS"]
+            #self.ct_users = ast.literal_eval(users_string)
             logger.info(
                 "using connection details provided with ENV variables")
         else:
@@ -42,9 +41,7 @@ class TestsChurchWebHelper(unittest.TestCase):
         self.api = ChurchToolsApi(
             domain=self.ct_domain,
             ct_token=self.ct_token)
-        logger.basicConfig(filename="logs/TestsChurchToolsApi.log", encoding="utf-8",
-                            format="%(asctime)s %(name)-10s %(levelname)-8s %(message)s",
-                            level=logger.DEBUG)
+        
         logger.info("Executing Tests RUN")
 
     def tearDown(self)->None:
