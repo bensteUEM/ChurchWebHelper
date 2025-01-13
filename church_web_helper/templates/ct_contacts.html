@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+
+<body>
+    {% include 'error.html' %}
+    {% include 'navbar.html' %}
+    <div class="container">
+        This page allows to download all available contacts as VCards.</br>
+        It was implemented in order to ease use of ChurchTools information as phonebook.</br>
+        Only name and WORK, HOME and CELL number are exported to avoid other usage.</br>
+        </br>
+        In order to use this with automated login as CardDAV service e.g. on Fritzbox use basic Auth with URL like this</br>
+        <code>https://DOMAIN:PORT/ct/contacts?download=fritzbox</code>
+        <form>
+            <input type="submit" name="download" class="btn btn-primary" value="Download"> </br>
+        </form>
+    </div>
+</body>
+
+</html>

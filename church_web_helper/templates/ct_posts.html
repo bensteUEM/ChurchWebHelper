@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+
+<body>
+    {% include 'error.html' %}
+    {% include 'navbar.html' %}
+    <div class="container">
+        <div>This page allows to repost ChurchTools Posts to a Communi group</div>
+        <table class="table table-striped">
+            <thead>
+                <tr class="table-primary">
+                    <th scope="col">ID</th>
+                    <th scope="col">Author</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Content</th>
+                    <th scope="col">Images</th>
+                    <th scope="col">Publication Date</th>
+                    <th scope="col">actions</th>
+                </tr>
+            </thead>
+    </div>
+</body>
+
+<div class="form-group">
+    {% for post in posts %}
+    <tr>
+        <th scope="row">
+            {{post.id}}
+        </th>
+        <td>
+            {{post.actor.title}}
+        </td>
+        <td>
+            {{post.title}}
+        </td>
+        <td>
+            {{post.content}}
+        </td>
+        <td>
+            {% for image in post.images %}
+            <img src="{{image}}" alt="post image from churchtools">
+            {% endfor %}
+        </td>
+        <td>
+            {{post.publishedDate}}
+        </td>
+        <td>
+            <div class="row">
+
+                <div class="col">
+                    <a href="?action=repost&post_id={{post.id}}">
+                        Repost
+                    </a>
+                </div>
+
+            </div>
+        </td>
+        {% endfor %}
+</div>
+
+
+</html>

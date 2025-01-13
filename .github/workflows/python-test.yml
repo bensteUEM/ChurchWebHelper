@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: ev_kirche_baiersbronn
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.2.2
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5.3.0
         with:
           python-version: '3.x'
 
@@ -37,8 +37,8 @@ jobs:
         env:
             POETRY_HOME: ${{ github.workspace }}/.poetry
   
-      - name: Run unittests
+      - name: Run Tests
         run: |
-            python -m unittest tests.test_ChurchWebHelper
+            pytest tests/*
         env:
               POETRY_HOME: ${{ github.workspace }}/.poetry
