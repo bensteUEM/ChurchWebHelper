@@ -115,59 +115,64 @@ class Test_Helper:
     def test_get_primary_resource(self):
         SAMPLE_EVENT_ID = 330754
         SAMPLE_DATE = datetime(year=2024, month=9, day=29)
-        EXPECTED_RESULT = {'Michaelskirche (MIKI)'}
-        RESOURCE_IDS = [8,16,17,20,21]
+        EXPECTED_RESULT = {"Michaelskirche (MIKI)"}
+        RESOURCE_IDS = [8, 16, 17, 20, 21]
 
-        result = get_primary_resource(appointment_id=SAMPLE_EVENT_ID,
-                                    relevant_date=SAMPLE_DATE,
-                                    api=self.ct_api,
-                                    considered_resource_ids=RESOURCE_IDS,
-                                    )
+        result = get_primary_resource(
+            appointment_id=SAMPLE_EVENT_ID,
+            relevant_date=SAMPLE_DATE,
+            api=self.ct_api,
+            considered_resource_ids=RESOURCE_IDS,
+        )
 
         assert EXPECTED_RESULT == result
 
     def test_get_title_name_services(self):
-        SAMPLE_CALENDAR_IDS=[2]
+        SAMPLE_CALENDAR_IDS = [2]
         SAMPLE_APPOINTMENT_ID = 330763
         SAMPLE_DATE = datetime(year=2024, month=9, day=29)
         SAMPLE_SERVICES = [1]
-        SAMPLE_GROUPS_FOR_PREFIX = [89,355,358,361,367,370,373]
+        SAMPLE_GROUPS_FOR_PREFIX = [89, 355, 358, 361, 367, 370, 373]
 
-        result = get_title_name_services(calendar_ids= SAMPLE_CALENDAR_IDS, 
-                                        appointment_id= SAMPLE_APPOINTMENT_ID,
-                                        relevant_date = SAMPLE_DATE,
-                                        considered_program_services = SAMPLE_SERVICES,
-                                        considered_groups=SAMPLE_GROUPS_FOR_PREFIX,
-                                        api = self.ct_api,
+        result = get_title_name_services(
+            calendar_ids=SAMPLE_CALENDAR_IDS,
+            appointment_id=SAMPLE_APPOINTMENT_ID,
+            relevant_date=SAMPLE_DATE,
+            considered_program_services=SAMPLE_SERVICES,
+            considered_groups=SAMPLE_GROUPS_FOR_PREFIX,
+            api=self.ct_api,
         )
-        
+
         EXPECTED_RESULT = "Pfarrer Vögele"
         assert EXPECTED_RESULT == result
 
     @pytest.mark.parametrize(
         "person_id, relevant_groups, expected_result",
         [
-            (51, [367,89,355,358], "Pfarrer"), 
-            (51, [], ""), 
-            (822, [367,89,355,358], "Pfarrerin"),
-            (110, [367,89,355,358], "Prädikant"),
-            (205, [367,89,355,358], "Pfarrer i.R."),
-            (911, [367,89,355,358], "Pfarrerin i.R."),
+            (51, [367, 89, 355, 358], "Pfarrer"),
+            (51, [], ""),
+            (822, [367, 89, 355, 358], "Pfarrerin"),
+            (110, [367, 89, 355, 358], "Prädikant"),
+            (205, [367, 89, 355, 358], "Pfarrer i.R."),
+            (911, [367, 89, 355, 358], "Pfarrerin i.R."),
             (423, [370], "Pastoralreferent (Kath.)"),
             (420, [370], "Pastoralreferentin (Kath.)"),
-            (513, [355,358], ""),
-            (640, [358], "Diakon")
+            (513, [355, 358], ""),
+            (640, [358], "Diakon"),
         ],
     )
-    def test_get_group_title_of_person(self, person_id, relevant_groups, expected_result):
+    def test_get_group_title_of_person(
+        self, person_id, relevant_groups, expected_result
+    ):
         """Check that titles by group can be retrieved
 
-        ELKW1610 specific IDs - 
+        ELKW1610 specific IDs -
         """
-        result = get_group_title_of_person(person_id,
-                                           relevant_groups,
-                                            api=self.ct_api,
-                                            )
+        result = get_group_title_of_person(
+            person_id,
+            relevant_groups,
+            api=self.ct_api,
+        )
         assert expected_result == result
 
     # ELKW1610 specific IDs
@@ -178,30 +183,44 @@ class Test_Helper:
     @pytest.mark.parametrize(
         "appointment_id, relevant_date, considered_services, expected_result",
         [
-            (327886, datetime(year=2024, month=9, day=29), [9,61], ""),
-            (330754, datetime(year=2024, month=9, day=29), [9,61], "mit Kirchenchor"), 
-            (330754, datetime(year=2024, month=9, day=29), [], ""), 
-            (330763, datetime(year=2024, month=9, day=29), [9,61], "mit InJoy Chor"),  #Testing "mit InJoy Chor, Kirchenchor"
-            (327847, datetime(year=2024, month=9, day=8), [9,61], "mit Posaunenchor"), # Testing "mit Kirchenchor und Posaunenchor"
+            (327886, datetime(year=2024, month=9, day=29), [9, 61], ""),
+            (330754, datetime(year=2024, month=9, day=29), [9, 61], "mit Kirchenchor"),
+            (330754, datetime(year=2024, month=9, day=29), [], ""),
+            (
+                330763,
+                datetime(year=2024, month=9, day=29),
+                [9, 61],
+                "mit InJoy Chor",
+            ),  # Testing "mit InJoy Chor, Kirchenchor"
+            (
+                327847,
+                datetime(year=2024, month=9, day=8),
+                [9, 61],
+                "mit Posaunenchor",
+            ),  # Testing "mit Kirchenchor und Posaunenchor"
         ],
     )
-    def test_get_group_name_services(self, appointment_id, relevant_date, considered_services, expected_result):
+    def test_get_group_name_services(
+        self, appointment_id, relevant_date, considered_services, expected_result
+    ):
         """Check that special service group names can be retrieved
 
-        ELKW1610 specific IDs - 
+        ELKW1610 specific IDs -
         """
         SAMPLE_CALENDAR_IDS = [2]
-        SAMPLE_GROUPTYPE_ROLE_ID_LEADS = [9,16]
+        SAMPLE_GROUPTYPE_ROLE_ID_LEADS = [9, 16]
 
-        result = get_group_name_services(calendar_ids=SAMPLE_CALENDAR_IDS,
-                                                appointment_id=appointment_id,
-                                                relevant_date=relevant_date,
-                                                api=self.ct_api,
-                                                considered_music_services=considered_services,
-                                                considered_grouptype_role_ids=SAMPLE_GROUPTYPE_ROLE_ID_LEADS
-                                                )
+        result = get_group_name_services(
+            calendar_ids=SAMPLE_CALENDAR_IDS,
+            appointment_id=appointment_id,
+            relevant_date=relevant_date,
+            api=self.ct_api,
+            considered_music_services=considered_services,
+            considered_grouptype_role_ids=SAMPLE_GROUPTYPE_ROLE_ID_LEADS,
+        )
 
         assert expected_result == result
+
 
 def test_compare_docx_files():
     FILENAME = "tests/samples/test_get_plan_months.docx"

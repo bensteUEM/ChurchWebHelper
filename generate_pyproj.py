@@ -39,8 +39,8 @@ pyproject_toml_content = {
                 "matplotlib": "^3.9.1",
                 "pandas": "^2.2.2",
                 "toml": "^0.10.2",
-                "vobject" : "^0.9.8",
-                "xlsxwriter" : "^3.2.0",
+                "vobject": "^0.9.8",
+                "xlsxwriter": "^3.2.0",
             },
             "group": {
                 "dev": {
@@ -50,7 +50,7 @@ pyproject_toml_content = {
                         "wheel": "^0.41.2",
                         "setuptools": "^66.1.1",
                         "autopep8": "^2.0.4",
-                        "pytest" : "^8.3.4",
+                        "pytest": "^8.3.4",
                     }
                 }
             },

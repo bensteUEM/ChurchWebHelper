@@ -87,10 +87,10 @@ def check_session():
     If not a redirect to respective login pages should be executed
     """
     if request.endpoint not in ("login_ct", "login_communi"):
-        #Check CT Login
+        # Check CT Login
         if not session.get("ct_api") or not session["ct_api"].who_am_i():
             return redirect(url_for("login_ct"))
-        #Check Communi Login
+        # Check Communi Login
         if not session.get("communi_api") or not session["communi_api"].who_am_i():
             return redirect(url_for("login_communi"))
         return None
@@ -301,18 +301,25 @@ def download_plan_months():
         "taufe_service_ids": [127],
         "abendmahl_service_ids": [100],
     }
+    logger.debug("defaults defined")
 
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
+    logger.debug("retrieved available calendars len=%s", len(available_calendars))
 
     resources = session["ct_api"].get_resource_masterdata(resultClass="resources")
+    logger.debug("retrieved available resources len=%s", len(resources))
+
     # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization
     available_resources = {
         resource["id"]: resource["name"]
         for resource in resources
         if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
     }
+    logger.debug(
+        "selected available resources %s/%s", len(available_resources), len(resources)
+    )
 
     event_masterdata = session["ct_api"].get_event_masterdata()
     # service_groups = event_masterdata["serviceGroups"] # Check your Service Group IDs here for customization
@@ -321,13 +328,21 @@ def download_plan_months():
         for service in event_masterdata["services"]
         if service["serviceGroupId"] == DEFAULTS.get("program_service_group_id")
     }
+    logger.debug(
+        "retrieved available program services len=%s", len(available_program_services)
+    )
+
     available_music_services = {
         service["id"]: service["name"]
         for service in event_masterdata["services"]
         if service["serviceGroupId"] == DEFAULTS.get("music_service_group_id")
     }
+    logger.debug(
+        "retrieved available music services len=%s", len(available_music_services)
+    )
 
     if request.method == "GET":
+        logger.info("Responding to GET request")
         selected_calendars = DEFAULTS.get(
             "selected_calendars", available_calendars.keys()
         )
@@ -339,6 +354,17 @@ def download_plan_months():
         )
         selected_music_services = DEFAULTS.get(
             "selected_music_services", available_music_services.keys()
+        )
+        logger.debug(
+            "identified selected calendars (%s/%s) resources (%s/%s) program_services (%s/%s) music_services (%s/%s)",
+            len(selected_calendars),
+            len(available_calendars),
+            len(selected_resources),
+            len(available_resources),
+            len(selected_program_services),
+            len(available_program_services),
+            len(selected_music_services),
+            len(available_music_services),
         )
 
         from_date = datetime.now().date()
@@ -354,6 +380,7 @@ def download_plan_months():
             - relativedelta(days=1),
             time.max,
         )
+        logger.debug("defined time range %s - %s", from_date, to_date)
 
         return render_template(
             "download_plan_months.html",
@@ -370,8 +397,7 @@ def download_plan_months():
             to_date=to_date,
         )
     elif request.method == "POST":
-        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
-        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+        logger.info("Responding to POST request")
 
         selected_calendars = [
             int(calendar_id)
@@ -391,16 +417,33 @@ def download_plan_months():
             int(service_id)
             for service_id in request.form.getlist("selected_music_services")
         ]
+        logger.debug(
+            "identified selected calendars (%s/%s) resources (%s/%s) program_services (%s/%s) music_services (%s/%s)",
+            len(selected_calendars),
+            len(available_calendars),
+            len(selected_resources),
+            len(available_resources),
+            len(selected_program_services),
+            len(available_program_services),
+            len(selected_music_services),
+            len(available_music_services),
+        )
 
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
         to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+        logger.debug("defined time range %s - %s", from_date, to_date)
 
         calendar_appointments = session["ct_api"].get_calendar_appointments(
             calendar_ids=selected_calendars, from_=from_date, to_=to_date
         )
 
         entries = []
-        for item in calendar_appointments:
+        for counter, item in enumerate(calendar_appointments):
+            logger.debug(
+                "Iterating calendar appointments %s/%s",
+                counter + 1,
+                len(calendar_appointments),
+            )
             # startDate casting
             if len(item["startDate"]) > 10:
                 item["startDate"] = (
@@ -412,6 +455,7 @@ def download_plan_months():
                 item["startDate"] = datetime.strptime(
                     item["startDate"], "%Y-%m-%d"
                 ).astimezone()
+            logger.debug("converted start date as %s", item["startDate"])
 
             event = session["ct_api"].get_event_by_calendar_appointment(
                 appointment_id=item["id"], start_date=item["startDate"]
@@ -434,6 +478,7 @@ def download_plan_months():
                 if item["startDate"].hour > 0
                 else "Ganztag",
             }
+            logger.debug("finished preparing simple attributes")
 
             # Predigt
             data["predigt"] = get_title_name_services(
@@ -444,6 +489,7 @@ def download_plan_months():
                 considered_program_services=selected_program_services,
                 considered_groups=DEFAULTS.get("selected_title_prefix_groups"),
             )
+            logger.debug("finished preparing predigt attributes")
 
             # Special Service - usually high-level indication of music
             data["specialService"] = get_group_name_services(
@@ -454,6 +500,7 @@ def download_plan_months():
                 considered_music_services=selected_music_services,
                 considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads"),
             )
+            logger.debug("finished preparing specialService attributes")
 
             # location
             data["location"] = list(
@@ -480,6 +527,8 @@ def download_plan_months():
             for old, new in replacements.items():
                 data["location"] = data["location"].replace(old, new)
 
+            logger.debug("finished preparing location attributes")
+
             # Individual services with lastnames for Table overview
             predigt = []
             for service_id in DEFAULTS.get("predigt_service_ids", []):
@@ -495,6 +544,7 @@ def download_plan_months():
                     if service_assignment.get("personId")
                 ]
             )
+            logger.debug("finished preparing predigt_lastname attributes")
 
             organist = []
             for service_id in DEFAULTS.get("organist_service_ids", []):
@@ -510,6 +560,7 @@ def download_plan_months():
                     if service_assignment.get("personId")
                 ]
             )
+            logger.debug("finished preparing organist_lastname attributes")
 
             musikteam = []
             for service_id in DEFAULTS.get("musikteam_service_ids", []):
@@ -528,6 +579,7 @@ def download_plan_months():
             if len(data["specialService"]) > 0:
                 combined = [data["musik"], data["specialService"]]
                 data["musik"] = ", ".join(item for item in combined if len(item) > 0)
+            logger.debug("finished preparing musik attributes")
 
             taufe = []
             for service_id in DEFAULTS.get("taufe_service_ids", []):
@@ -547,6 +599,7 @@ def download_plan_months():
             data["taufe"] = (
                 "Taufe " + ", ".join(taufnamen) if len(taufnamen) > 0 else ""
             )
+            logger.debug("finished preparing musik attributes")
 
             abendmahl = []
             for service_id in DEFAULTS.get("abendmahl_service_ids", []):
@@ -556,6 +609,7 @@ def download_plan_months():
                     )
                 )
             data["abendmahl"] = "Abendmahl" if len(abendmahl) > 0 else ""
+            logger.debug("finished preparing abendmahl attributes")
 
             entries.append(data)
 
@@ -583,10 +637,13 @@ def download_plan_months():
             .reset_index()
             .drop(columns="startDate")
         )
+        logger.debug("created dataframe")
         df_data = deduplicate_df_index_with_lists(df_data_pivot)
 
+        logger.debug("starting to process action")
         action = request.form.get("action")
         if action == "Auswahl anpassen":
+            logger.debug("change selected params only")
             return render_template(
                 "download_plan_months.html",
                 data=df_data.to_html(
@@ -605,8 +662,9 @@ def download_plan_months():
             )
 
         elif action == "DOCx Document Download":
+            logger.debug("Preparing Download as DOCx")
             document = get_plan_months_docx(df_data, from_date=from_date)
-            filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.docx"
+            filename = f"Monatsplan_{from_date.strftime('%Y_%B')}.docx"
             document.save(filename)
             response = send_file(
                 path_or_file=os.getcwd() + "/" + filename, as_attachment=True
@@ -615,7 +673,8 @@ def download_plan_months():
             return response
 
         elif action == "Excel Download":
-            filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.xlsx"
+            logger.debug("Preparing Download as Excel")
+            filename = f"Monatsplan_{from_date.strftime('%Y_%B')}.xlsx"
             workbook = get_plan_months_xlsx(
                 df_data, from_date=from_date, filename=filename
             )
@@ -634,7 +693,7 @@ def ct_calendar_appointments():
     Use get param calendar_id=2 or similar to define a calendar
     Use get param days to specify the number of days
     Use optional get param services to specify a , separated list of service IDs to include
-    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using 
+    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using
     """
     # default params if not specified
     DEFAULT_CALENDAR_ID = 2
@@ -763,7 +822,9 @@ def ct_service_workload():
 
     available_service_categories = {
         serviceGroup["id"]: serviceGroup["name"]
-        for serviceGroup in session["ct_api"].get_event_masterdata(resultClass="serviceGroups")
+        for serviceGroup in session["ct_api"].get_event_masterdata(
+            resultClass="serviceGroups"
+        )
     }
     available_service_types_by_category = {
         key: [] for key in available_service_categories
@@ -981,14 +1042,13 @@ def ct_service_workload():
     )
 
 
-@app.route("/ct/contacts",  methods=["GET"])
+@app.route("/ct/contacts", methods=["GET"])
 def ct_contacts():
     """Vcard export for ChurchTools contacts.
 
     Generates VCards for Name / Phone number for all available persons
     """
     if request.args.get("download"):
-
         persons = session["ct_api"].get_persons()
         vcards = []
         for person in persons:
@@ -996,7 +1056,7 @@ def ct_contacts():
 
             # Add a full name
             vcard.add("fn")
-            vcard.fn.value = f"{person["firstName"]} {person["lastName"]}"
+            vcard.fn.value = f"{person['firstName']} {person['lastName']}"
 
             # Add a HOME phone number
             home_tel = vcard.add("tel")
@@ -1026,8 +1086,12 @@ def ct_contacts():
         output.seek(0)
 
         # Send the file as a download
-        return send_file(output, as_attachment=True, download_name="ct_contacts.vcf", mimetype="text/vcard")
-
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="ct_contacts.vcf",
+            mimetype="text/vcard",
+        )
 
     return render_template("ct_contacts.html")
 
@@ -1050,7 +1114,9 @@ def ct_posts():
         post = posts[0]
 
         GROUP_ID = 12508
-        base_url = re.match(r"^(https?:\/\/[^/]+)(?:.*)",post.get("group").get("apiUrl")).group(1)
+        base_url = re.match(
+            r"^(https?:\/\/[^/]+)(?:.*)", post.get("group").get("apiUrl")
+        ).group(1)
 
         session["communi_api"].recommendation(
             group_id=GROUP_ID,
