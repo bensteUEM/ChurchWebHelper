@@ -3,20 +3,19 @@
 It is used to outsource parts which don't need to be part of app.py
 """
 
-from collections import OrderedDict
 import logging
-from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
-from dateutil.relativedelta import relativedelta
+from collections import OrderedDict
+from datetime import datetime
 
-from datetime import datetime, timedelta
 import docx
-from docx.shared import Pt, RGBColor, Cm
 import docx.table
 import pandas as pd
+import xlsxwriter
+from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
+from dateutil.relativedelta import relativedelta
 from docx.oxml import OxmlElement, ns
 from docx.oxml.ns import qn
-
-import xlsxwriter
+from docx.shared import Cm, Pt, RGBColor
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +42,14 @@ def get_special_day_name(
         from_=trunc_date,
         to_=trunc_date + relativedelta(days=1) - relativedelta(seconds=1),
     )
-    if special_names:
-        if len(special_names) > 0:
-            return special_names[0]["caption"]
+    if special_names and len(special_names) > 0:
+        return special_names[0]["caption"]
 
     return ""
 
 
 def extract_relevant_calendar_appointment_shortname(longname: str) -> str:
-    """Tries to extract a shortname for "special ocasion events" based on a mapping
+    """Tries to extract a shortname for "special ocasion events" based on a mapping.
 
     Excecution order is relevant!
 
@@ -100,7 +98,7 @@ def extract_relevant_calendar_appointment_shortname(longname: str) -> str:
 
 
 def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Document:
-    """Function which converts a Dataframe into a DOCx document used for final print modifications
+    """Function which converts a Dataframe into a DOCx document used for final print modifications.
 
     Args:
         data: pre-formatted data to be used as base
@@ -109,7 +107,6 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     Returns:
         document reference
     """
-
     document = docx.Document()
     padding_left = 1.5
     padding_right = -0.25
@@ -130,7 +127,7 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
         run.font.size = Pt(32)
         run.font.color.rgb = RGBColor.from_string("000000")
 
-    locations = set([item[0] for item in data.columns[2:]])
+    locations = {item[0] for item in data.columns[2:]}
 
     table = document.add_table(rows=1, cols=len(locations) + 1)
     hdr_cells = table.rows[0].cells
@@ -141,7 +138,7 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
             for run in paragraph.runs:
                 run.bold = True
 
-    for index, df_row in data.iterrows():
+    for _index, df_row in data.iterrows():
         row_cells = table.add_row().cells
         para = row_cells[0].paragraphs[0]
         para.add_run(df_row["shortDay"].iloc[0]).add_break()
@@ -172,7 +169,7 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
 def get_plan_months_xlsx(
     data: pd.DataFrame, from_date: datetime, filename: str
 ) -> xlsxwriter.Workbook:
-    """Function which converts a Dataframe into a XLXs used as admin overview printout
+    """Function which converts a Dataframe into a XLXs used as admin overview printout.
 
     Args:
         data: pre-formatted data to be used as base
@@ -182,13 +179,12 @@ def get_plan_months_xlsx(
     Returns:
         workbook reference
     """
-
     workbook = xlsxwriter.Workbook(filename)
 
     heading = f"{from_date.strftime('%B %Y')}"
     worksheet = workbook.add_worksheet(name=heading)
 
-    locations = set([item[0] for item in data.columns[2:]])
+    locations = {item[0] for item in data.columns[2:]}
 
     row = 0
 
@@ -228,7 +224,7 @@ def get_plan_months_xlsx(
 
     TIME | Predigt | ABM   | Organist
          |         | Taufe | Musik
-    
+
     """
 
     column_offsets = [0, 1, 2, 3, 0, 1, 2, 3]
@@ -246,7 +242,7 @@ def get_plan_months_xlsx(
 
     # Iterate all data rows
     location_column_offset = 0
-    for index, df_row in data.iterrows():
+    for _index, df_row in data.iterrows():
         format_content = workbook.add_format({"bold": True, "border": 1})
         format_content_b = workbook.add_format({"bold": True, "border": 1, "bottom": 2})
 
@@ -255,12 +251,12 @@ def get_plan_months_xlsx(
 
         max_events_per_date = max([len(i) for i in df_row[slice(None), "shortTime"]])
         for row_offset, column_offset, column_value in zip(
-            row_offsets, column_offsets, column_references
+            row_offsets, column_offsets, column_references, strict=False
         ):
             for location_index, location in enumerate(locations):
                 location_column_offset = location_index * NUMBER_OF_COLUMNS_PER_LOCATION
 
-                for event_per_day_offset in range(0, max_events_per_date):
+                for event_per_day_offset in range(max_events_per_date):
                     value = ""
                     if column_value in df_row[location].index:
                         if len(df_row[location, column_value]) > event_per_day_offset:
@@ -285,7 +281,7 @@ def get_plan_months_xlsx(
 
 
 def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
-    """Flattens a df with multiple same index entries to list entries
+    """Flattens a df with multiple same index entries to list entries.
 
     Args:
         df_input: the original dataframe which contains multiple entries for "shortDay" index per column
@@ -293,7 +289,6 @@ def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
     Returns:
         flattened df which has unique shortDay and combined lists in cells
     """
-
     shortDays = list(OrderedDict.fromkeys(df_input["shortDay"]).keys())
     df_output = pd.DataFrame(columns=df_input.columns)
     for shortDay in shortDays:
@@ -332,7 +327,7 @@ def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
 def generate_event_paragraph(
     target_cell: docx.table._Cell, relevant_entry: pd.Series
 ) -> None:
-    """function which generates the content of one table cell.
+    """Function which generates the content of one table cell.
 
     Used with get_plan_months_docx
     Iterates through all items in relevant row and using the columns to generate the text.
@@ -372,12 +367,11 @@ def generate_event_paragraph(
 
 
 def change_table_format(table: docx.table) -> None:
-    """Inplace overwrite of styles
+    """Inplace overwrite of styles.
 
     Args:
         table: the table to modify
     """
-
     # Access the XML element of the table and move ident because by default it's 1,9cm off
     tbl_pr = table._element.xpath("w:tblPr")[0]
     tbl_indent = OxmlElement("w:tblInd")
@@ -401,8 +395,8 @@ def change_table_format(table: docx.table) -> None:
 
 def set_page_margins(
     doc: docx.Document, top: float, bottom: float, left: float, right: float
-):
-    """Helper to set document page borders in cm
+) -> None:
+    """Helper to set document page borders in cm.
 
     Args:
         doc: the document to change
@@ -420,7 +414,7 @@ def set_page_margins(
     section.right_margin = Cm(right)
 
 
-def set_cell_border(cell):
+def set_cell_border(cell) -> None:
     """Function to add borders to a cell.
 
     Args:
@@ -443,7 +437,7 @@ def set_cell_border(cell):
     tcPr.append(tcBorders)
 
 
-def set_cell_margins(cell, top=0, start=0, bottom=0, end=0):
+def set_cell_margins(cell, top=0, start=0, bottom=0, end=0) -> None:
     """Function to set cell margins (padding).
 
     Args:
@@ -486,7 +480,7 @@ def get_primary_resource(
     api: CTAPI,
     considered_resource_ids: list[int],
 ) -> str:
-    """Helper which is used to get the primary resource allocation of an event
+    """Helper which is used to get the primary resource allocation of an event.
 
     Args:
         appointment_id: id of calendar entry
@@ -502,9 +496,7 @@ def get_primary_resource(
         to_=relevant_date,
         appointment_id=appointment_id,
     )
-    locations = {booking["base"]["resource"]["name"] for booking in bookings}
-
-    return locations
+    return {booking["base"]["resource"]["name"] for booking in bookings}
 
 
 def get_title_name_services(
@@ -515,8 +507,7 @@ def get_title_name_services(
     considered_program_services: list[int],
     considered_groups: list[int],
 ) -> str:
-    """
-    Helper function which retrieves a text representation of a service including the persons title based on considered groups.
+    """Helper function which retrieves a text representation of a service including the persons title based on considered groups.
 
     1. Lookup relevant services
     2. Lookup the prefix of the person to be used based on group assignemnts
@@ -562,7 +553,7 @@ def get_title_name_services(
 def get_group_title_of_person(
     person_id: int, relevant_groups: list[int], api: CTAPI
 ) -> str:
-    """Retrieve name of first group for specified person and gender if possible
+    """Retrieve name of first group for specified person and gender if possible.
 
     Args:
         person_id: CT id of the user
@@ -630,7 +621,6 @@ def get_group_name_services(
     Returns:
         text which can be used as suffix - empty in case no special service
     """
-
     relevant_event = api.get_event_by_calendar_appointment(
         appointment_id=appointment_id, start_date=relevant_date
     )
@@ -661,7 +651,4 @@ def get_group_name_services(
             for group_id in relevant_group_ids:
                 group = api.get_groups(group_id=group_id)[0]
                 result_groups.append(group["name"])
-    result_string = (
-        "mit " + " und ".join(result_groups) if len(result_groups) > 0 else ""
-    )
-    return result_string
+    return "mit " + " und ".join(result_groups) if len(result_groups) > 0 else ""
