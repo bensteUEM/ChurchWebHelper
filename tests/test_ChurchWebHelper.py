@@ -1,9 +1,7 @@
-import ast
 import json
 import logging
 import logging.config
 import os
-import pytest
 from pathlib import Path
 
 from churchtools_api.churchtools_api import ChurchToolsApi

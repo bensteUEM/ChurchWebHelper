@@ -1,9 +1,13 @@
 from datetime import datetime
+import json
+import logging, logging.config
 import os
+from pathlib import Path
 from typing import Tuple
 import pandas as pd
 import pytest
 import docx
+import pytz
 
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
@@ -15,6 +19,16 @@ from church_web_helper.helper import (
     get_title_name_services,
 )
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
+
+logger = logging.getLogger(__name__)
+
+config_file = Path("logging_config.json")
+with config_file.open(encoding="utf-8") as f_in:
+    logging_config = json.load(f_in)
+    log_directory = Path(logging_config["handlers"]["file"]["filename"]).parent
+    if not log_directory.exists():
+        log_directory.mkdir(parents=True)
+    logging.config.dictConfig(config=logging_config)
 
 
 class Test_Helper:
@@ -51,13 +65,38 @@ class Test_Helper:
         )
 
     @pytest.mark.parametrize(
-        "date, expected_output",
+        ("date, expected_output"),
         [
-            (datetime(year=2024, month=12, day=23, hour=23), ""),
-            (datetime(year=2024, month=12, day=24), "Christvesper"),
-            (datetime(year=2024, month=12, day=25), "Christfest I"),
-            (datetime(year=2024, month=12, day=26), "Christfest II"),
-            (datetime(year=2024, month=12, day=26, hour=23), "Christfest II"),
+            (
+                datetime(year=2024, month=12, day=23, hour=23).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                "",
+            ),
+            (
+                datetime(year=2024, month=12, day=24).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                "Christvesper",
+            ),
+            (
+                datetime(year=2024, month=12, day=25).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                "Christfest I",
+            ),
+            (
+                datetime(year=2024, month=12, day=26).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                "Christfest II",
+            ),
+            (
+                datetime(year=2024, month=12, day=26, hour=23).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                "Christfest II",
+            ),
         ],
     )
     def test_get_special_day_name(self, date: datetime, expected_output: str):
@@ -77,22 +116,32 @@ class Test_Helper:
             {
                 "shortDay": ["3.2", "23.1", "23.1", "3.2"],
                 "startDate": [
-                    datetime(year=2024, month=2, day=3),
-                    datetime(year=2024, month=1, day=23),
-                    datetime(year=2024, month=1, day=23),
-                    datetime(year=2024, month=2, day=3),
+                    datetime(year=2024, month=2, day=3).astimezone(
+                        pytz.timezone("Europe/Berlin")
+                    ),
+                    datetime(year=2024, month=1, day=23).astimezone(
+                        pytz.timezone("Europe/Berlin")
+                    ),
+                    datetime(year=2024, month=1, day=23).astimezone(
+                        pytz.timezone("Europe/Berlin")
+                    ),
+                    datetime(year=2024, month=2, day=3).astimezone(
+                        pytz.timezone("Europe/Berlin")
+                    ),
                 ],
                 "location": ["A1", "A2", "A2", "A3"],
                 "shortTime": ["08:00", "10:00", "12:00", "9:00"],
                 "predigt": ["P1", "P2", "P1", "P2"],
                 "shortName": ["mit Abendmahl", None, None, None],
                 "specialService": [None, "mit Kirchenchor", None, None],
+                "specialDayName": [None, None, None, None],
             }
         )
+        df_sample["startDate"] = df_sample["startDate"].dt.tz_localize(None)
         df_data = (
             df_sample.pivot_table(
                 values=["shortTime", "shortName", "predigt", "specialService"],
-                index=["startDate", "shortDay"],
+                index=["specialDayName", "startDate", "shortDay"],
                 columns=["location"],
                 aggfunc=list,
                 fill_value="",
@@ -114,7 +163,9 @@ class Test_Helper:
 
     def test_get_primary_resource(self):
         SAMPLE_EVENT_ID = 330754
-        SAMPLE_DATE = datetime(year=2024, month=9, day=29)
+        SAMPLE_DATE = datetime(year=2024, month=9, day=29).astimezone(
+            pytz.timezone("Europe/Berlin")
+        )
         EXPECTED_RESULT = {"Michaelskirche (MIKI)"}
         RESOURCE_IDS = [8, 16, 17, 20, 21]
 
@@ -128,9 +179,17 @@ class Test_Helper:
         assert EXPECTED_RESULT == result
 
     def test_get_title_name_services(self):
+        """Check respective function with real sample.
+
+        IMPORTANT - This test method and the parameters used depend on target system!
+        The sample event needs to be less than 3 months old otherwise it will not be available
+        On ELKW1610.KRZ.TOOLS event ID 331144 is an existing event
+        """
         SAMPLE_CALENDAR_IDS = [2]
-        SAMPLE_APPOINTMENT_ID = 330763
-        SAMPLE_DATE = datetime(year=2024, month=9, day=29)
+        SAMPLE_APPOINTMENT_ID = 331144
+        SAMPLE_DATE = datetime(year=2025, month=1, day=1).astimezone(
+            pytz.timezone("Europe/Berlin")
+        )
         SAMPLE_SERVICES = [1]
         SAMPLE_GROUPS_FOR_PREFIX = [89, 355, 358, 361, 367, 370, 373]
 
@@ -143,11 +202,11 @@ class Test_Helper:
             api=self.ct_api,
         )
 
-        EXPECTED_RESULT = "Pfarrer Vögele"
+        EXPECTED_RESULT = "Pfarrer Raiser"
         assert EXPECTED_RESULT == result
 
     @pytest.mark.parametrize(
-        "person_id, relevant_groups, expected_result",
+        ("person_id, relevant_groups, expected_result"),
         [
             (51, [367, 89, 355, 358], "Pfarrer"),
             (51, [], ""),
@@ -176,28 +235,55 @@ class Test_Helper:
         assert expected_result == result
 
     # ELKW1610 specific IDs
-    # 330754 - Kirchenchor 29.09 FTal 9:00
-    # 327886 - Musikteam 29.9 GH
-    # 330763 - InJoyChor Tonbach 29.9 - 10:15
-    # 327684 - PChor - 8.9
+    # 331510 - Musikteam 23.3.25 GH
+    # 331150 - Kirchenchor 30.3.25 GH 10:00
+    # 331153 - InJoyChor 14.12 - 10:00
+    # 331153 - PChor - 4.5.25
     @pytest.mark.parametrize(
-        "appointment_id, relevant_date, considered_services, expected_result",
+        ("appointment_id, relevant_date, considered_services, expected_result"),
         [
-            (327886, datetime(year=2024, month=9, day=29), [9, 61], ""),
-            (330754, datetime(year=2024, month=9, day=29), [9, 61], "mit Kirchenchor"),
-            (330754, datetime(year=2024, month=9, day=29), [], ""),
             (
-                330763,
-                datetime(year=2024, month=9, day=29),
+                331510,
+                datetime(year=2025, month=3, day=23).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                [9, 61],
+                "",
+            ),
+            (
+                331150,
+                datetime(year=2025, month=3, day=30).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                [9, 61],
+                "mit Kirchenchor",
+            ),
+            (
+                331150,
+                datetime(year=2025, month=3, day=30).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
+                [],
+                "",
+            ),
+            # Testing "mit InJoy Chor
+            (
+                331153,
+                datetime(year=2025, month=12, day=14).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
                 [9, 61],
                 "mit InJoy Chor",
-            ),  # Testing "mit InJoy Chor, Kirchenchor"
+            ),
+            # Testing "mit Kirchenchor
             (
-                327847,
-                datetime(year=2024, month=9, day=8),
+                331153,
+                datetime(year=2025, month=5, day=4).astimezone(
+                    pytz.timezone("Europe/Berlin")
+                ),
                 [9, 61],
                 "mit Posaunenchor",
-            ),  # Testing "mit Kirchenchor und Posaunenchor"
+            ),
         ],
     )
     def test_get_group_name_services(
