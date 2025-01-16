@@ -85,7 +85,7 @@ class Test_Helper:
                 datetime(year=2024, month=12, day=24).astimezone(
                     pytz.timezone("Europe/Berlin")
                 ),
-                "Christnacht",
+                "Christvesper",
             ),
             (
                 datetime(year=2024, month=12, day=25).astimezone(

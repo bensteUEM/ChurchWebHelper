@@ -6,6 +6,7 @@ env:
   CT_TOKEN: ${{ secrets.CT_TOKEN }}
   CT_USERS: ${{ secrets.CT_USERS }}
   CT_DOMAIN: ${{ vars.CT_DOMAIN }}
+  TZ: Europe/Berlin
 
 jobs:
   list-domain:
@@ -36,9 +37,8 @@ jobs:
             poetry install
         env:
             POETRY_HOME: ${{ github.workspace }}/.poetry
-  
-      - name: Run Tests
+      - name: Run pytest
         run: |
-            pytest tests/*
+            pytest tests/
         env:
-              POETRY_HOME: ${{ github.workspace }}/.poetry
+            POETRY_HOME: ${{ github.workspace }}/.poetry
