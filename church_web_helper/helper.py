@@ -216,6 +216,7 @@ def get_plan_months_xlsx(
                 header,
                 format_header_bl if offset == 0 else format_header_b,
             )
+    worksheet.set_column(first_col=0,last_col=0,width=20)
 
     row += 3
 
