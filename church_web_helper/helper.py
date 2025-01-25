@@ -652,3 +652,30 @@ def get_group_name_services(
                 group = api.get_groups(group_id=group_id)[0]
                 result_groups.append(group["name"])
     return "mit " + " und ".join(result_groups) if len(result_groups) > 0 else ""
+
+
+def replace_special_services_with_service_shortnames(special_services: str) -> str:
+    """Helper which replaces long "special service" strings by their shortform.
+
+    Args:
+        special_services: original special service detected
+        e.g. "mit Posaunenchor" or "mit Posaunenchor und Kirchenchor"
+
+    Returns:
+        short version of special services without mit and separated by , only
+    """
+    special_services = special_services.split(" und ")
+    short_services = []
+
+    for special_service in special_services:
+        match special_service.removeprefix("mit "):
+            case "Posaunenchor":
+                short_services.append("Pos.Chor")
+            case "InJoy Chor":
+                short_services.append("InJ.Chor")
+            case "Kirchenchor":
+                short_services.append("Kir.Chor")
+            case _:
+                short_services.append(special_service.removeprefix("mit "))
+                logger.warning("no known shortservice version of %s", special_service)
+    return ", ".join(short_services)

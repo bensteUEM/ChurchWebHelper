@@ -48,6 +48,7 @@ from church_web_helper.helper import (
     get_primary_resource,
     get_special_day_name,
     get_title_name_services,
+    replace_special_services_with_service_shortnames,
 )
 
 logger = logging.getLogger(__name__)
@@ -576,7 +577,10 @@ def download_plan_months():
                 ]
             )
             if len(data["specialService"]) > 0:
-                combined = [data["musik"], data["specialService"]]
+                special_services_short = replace_special_services_with_service_shortnames(
+                    special_services=data["specialService"]
+                )
+                combined = [data["musik"], special_services_short]
                 data["musik"] = ", ".join(item for item in combined if len(item) > 0)
             logger.debug("finished preparing musik attributes")
 
@@ -598,7 +602,7 @@ def download_plan_months():
             data["taufe"] = (
                 "Taufe " + ", ".join(taufnamen) if len(taufnamen) > 0 else ""
             )
-            logger.debug("finished preparing musik attributes")
+            logger.debug("finished preparing taufe attributes")
 
             abendmahl = []
             for service_id in DEFAULTS.get("abendmahl_service_ids", []):

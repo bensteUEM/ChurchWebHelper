@@ -23,6 +23,7 @@ from church_web_helper.helper import (
     get_primary_resource,
     get_special_day_name,
     get_title_name_services,
+    replace_special_services_with_service_shortnames,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ with config_file.open(encoding="utf-8") as f_in:
 
 class Test_Helper:
     """Combined tests"""
+
     def setup_method(self) -> None:
         """Init API connection used for all tests"""
         self.ct_api = ChurchToolsApi(
@@ -402,3 +404,24 @@ def compare_tables(tables1: docx.table, tables2: docx.table) -> bool:
                 return False
 
     return True
+
+
+@pytest.mark.parametrize(
+    ("sample_value", "expected_result"),
+    [
+        ("mit Posaunenchor", "Pos.Chor"),
+        ("mit Kirchenchor", "Kir.Chor"),
+        ("mit InJoy Chor", "InJ.Chor"),
+        ("mit InJoy Chor und Kirchenchor", "InJ.Chor, Kir.Chor"),
+        ("mit Posaunenchor und Kirchenchor", "Pos.Chor, Kir.Chor"),
+        ("mit Was anderes", "Was anderes"),
+    ],
+)
+def test_replace_special_services_with_service_shortnames(
+    sample_value: str, expected_result: str
+) -> None:
+    """Paramized test which checks for intended replacements."""
+    assert (
+        replace_special_services_with_service_shortnames(special_services=sample_value)
+        == expected_result
+    )
