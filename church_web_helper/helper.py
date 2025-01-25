@@ -222,8 +222,8 @@ def get_plan_months_xlsx(
     """
     Each location should have a 2*4 entry by eventwhich looks like this
 
-    TIME | Predigt | ABM   | Organist
-         |         | Taufe | Musik
+    TIME      | Predigt | ABM   | Organist
+    shortName |         | Taufe | Musik
 
     """
 
@@ -234,7 +234,7 @@ def get_plan_months_xlsx(
         "predigt_lastname",
         "abendmahl",
         "organist_lastname",
-        None,
+        "shortName",
         None,
         "taufe",
         "musik",

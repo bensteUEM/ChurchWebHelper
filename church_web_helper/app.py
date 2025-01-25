@@ -466,7 +466,7 @@ def download_plan_months():
                 "caption": item["caption"],
                 "startDate": item["startDate"],
                 "shortName": extract_relevant_calendar_appointment_shortname(
-                    item["caption"]
+                    item["caption"] + (item["subtitle"] if item["subtitle"] else "")
                 ),
                 "shortDay": item["startDate"].strftime("%a %d.%m"),
                 "specialDayName": get_special_day_name(

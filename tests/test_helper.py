@@ -63,6 +63,7 @@ class Test_Helper:
             ("Wohnzimmer-Worship", "Wohnzimmer-Worship"),
             ("CVJM-Sonntag", "CVJM"),
             ("Impulsgodi", "Impuls"),
+            ("10:00 Zentral-Gottesdienst Maki Goldene und Diamantene Konfirmation", "Konfirmation")
         ],
     )
     def test_extract_relevant_calendar_appointment_shortname(
