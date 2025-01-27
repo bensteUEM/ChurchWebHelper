@@ -52,6 +52,7 @@ pyproject_toml_content = {
                         "setuptools": "^66.1.1",
                         "autopep8": "^2.0.4",
                         "pytest": "^8.3.4",
+                        "ruff" : "^0.9.3",
                     }
                 }
             },

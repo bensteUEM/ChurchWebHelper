@@ -1,3 +1,5 @@
+"""Flask main app."""
+
 import ast
 import base64
 import io
@@ -27,6 +29,20 @@ from dateutil.relativedelta import relativedelta
 from flask import Flask, redirect, render_template, request, send_file, session, url_for
 from matplotlib import pyplot as plt
 
+from church_web_helper.helper import (
+    deduplicate_df_index_with_lists,
+    extract_relevant_calendar_appointment_shortname,
+    get_plan_months_docx,
+    get_plan_months_xlsx,
+    get_primary_resource,
+    get_special_day_name,
+)
+from church_web_helper.service_information_transformation import (
+    get_group_name_services,
+    get_service_assignment_lastnames_or_unknown,
+    get_title_name_services,
+    replace_special_services_with_service_shortnames,
+)
 from flask_session import Session
 
 logger = logging.getLogger(__name__)
@@ -38,18 +54,6 @@ with config_file.open(encoding="utf-8") as f_in:
     if not log_directory.exists():
         log_directory.mkdir(parents=True)
     logging.config.dictConfig(config=logging_config)
-
-from church_web_helper.helper import (
-    deduplicate_df_index_with_lists,
-    extract_relevant_calendar_appointment_shortname,
-    get_group_name_services,
-    get_plan_months_docx,
-    get_plan_months_xlsx,
-    get_primary_resource,
-    get_special_day_name,
-    get_title_name_services,
-    replace_special_services_with_service_shortnames,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +298,7 @@ def download_plan_months():
             16,  # Leitung in "Kleingruppe"
         ],
         "program_service_group_id": 1,
-        "music_service_group_id": 4,
+        "music_service_group_ids": [4],
         "predigt_service_ids": [1],
         "organist_service_ids": [2, 87],
         "musikteam_service_ids": [10],
@@ -335,7 +339,7 @@ def download_plan_months():
     available_music_services = {
         service["id"]: service["name"]
         for service in event_masterdata["services"]
-        if service["serviceGroupId"] == DEFAULTS.get("music_service_group_id")
+        if service["serviceGroupId"] in DEFAULTS.get("music_service_group_ids")
     }
     logger.debug(
         "retrieved available music services len=%s", len(available_music_services)
@@ -480,28 +484,6 @@ def download_plan_months():
             }
             logger.debug("finished preparing simple attributes")
 
-            # Predigt
-            data["predigt"] = get_title_name_services(
-                calendar_ids=selected_calendars,
-                appointment_id=item["id"],
-                relevant_date=item["startDate"],
-                api=session["ct_api"],
-                considered_program_services=selected_program_services,
-                considered_groups=DEFAULTS.get("selected_title_prefix_groups"),
-            )
-            logger.debug("finished preparing predigt attributes")
-
-            # Special Service - usually high-level indication of music
-            data["specialService"] = get_group_name_services(
-                calendar_ids=selected_calendars,
-                appointment_id=item["id"],
-                relevant_date=item["startDate"],
-                api=session["ct_api"],
-                considered_music_services=selected_music_services,
-                considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads"),
-            )
-            logger.debug("finished preparing specialService attributes")
-
             # location
             data["location"] = list(
                 get_primary_resource(
@@ -529,81 +511,61 @@ def download_plan_months():
 
             logger.debug("finished preparing location attributes")
 
+            # Predigt
+            data["predigt"] = get_title_name_services(
+                calendar_ids=selected_calendars,
+                appointment_id=item["id"],
+                relevant_date=item["startDate"],
+                api=session["ct_api"],
+                considered_program_services=selected_program_services,
+                considered_groups=DEFAULTS.get("selected_title_prefix_groups"),
+            )
+            logger.debug("finished preparing predigt attributes")
+
+            # Special Service - usually high-level indication of music
+            data["specialService"] = get_group_name_services(
+                calendar_ids=selected_calendars,
+                appointment_id=item["id"],
+                relevant_date=item["startDate"],
+                api=session["ct_api"],
+                considered_music_services=selected_music_services,
+                considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads"),
+            )
+            logger.debug("finished preparing specialService attributes")
+
             # Individual services with lastnames for Table overview
-            predigt = []
-            for service_id in DEFAULTS.get("predigt_service_ids", []):
-                predigt.extend(
-                    session["ct_api"].get_persons_with_service(
-                        eventId=event["id"], serviceId=service_id
+            for service_name in ["predigt", "organist", "musikteam", "taufe"]:
+                data[f"{service_name}_lastname"] = (
+                    get_service_assignment_lastnames_or_unknown(
+                        ct_api=session["ct_api"],
+                        service_name=service_name,
+                        event_id=event["id"],
+                        config=DEFAULTS,
                     )
                 )
-            data["predigt_lastname"] = ", ".join(
-                [
-                    service_assignment["person"]["domainAttributes"]["lastName"]
-                    for service_assignment in predigt
-                    if service_assignment.get("personId")
-                ]
-            )
-            logger.debug("finished preparing predigt_lastname attributes")
 
-            organist = []
-            for service_id in DEFAULTS.get("organist_service_ids", []):
-                organist.extend(
-                    session["ct_api"].get_persons_with_service(
-                        eventId=event["id"], serviceId=service_id
-                    )
-                )
-            data["organist_lastname"] = ", ".join(
-                [
-                    service_assignment["person"]["domainAttributes"]["lastName"]
-                    for service_assignment in organist
-                    if service_assignment.get("personId")
-                ]
-            )
-            logger.debug("finished preparing organist_lastname attributes")
-
-            musikteam = []
-            for service_id in DEFAULTS.get("musikteam_service_ids", []):
-                musikteam.extend(
-                    session["ct_api"].get_persons_with_service(
-                        eventId=event["id"], serviceId=service_id
-                    )
-                )
-            data["musik"] = ", ".join(
-                [
-                    service_assignment["person"]["domainAttributes"]["lastName"]
-                    for service_assignment in musikteam
-                    if service_assignment.get("personId")
-                ]
-            )
+            # musik service is combination of lastnames and specialService groupname
+            special_services_short = []
             if len(data["specialService"]) > 0:
-                special_services_short = replace_special_services_with_service_shortnames(
-                    special_services=data["specialService"]
+                special_services_short = (
+                    replace_special_services_with_service_shortnames(
+                        special_services=data["specialService"]
+                    )
                 )
-                combined = [data["musik"], special_services_short]
-                data["musik"] = ", ".join(item for item in combined if len(item) > 0)
+
+            combined_music = [data["musikteam_lastname"], special_services_short]
+            data["musik"] = ", ".join(item for item in combined_music if len(item) > 0)
             logger.debug("finished preparing musik attributes")
 
-            taufe = []
-            for service_id in DEFAULTS.get("taufe_service_ids", []):
-                taufe.extend(
-                    session["ct_api"].get_persons_with_service(
-                        eventId=event["id"], serviceId=service_id
-                    )
-                )
-            taufnamen = []
-            for service_assignment in taufe:
-                if service_assignment.get("personId"):
-                    taufnamen.append(
-                        service_assignment["person"]["domainAttributes"]["lastName"]
-                    )
-                else:
-                    taufnamen.append(service_assignment["name"])
+            # Taufe should have a "Taufe" prefix or no value at all
             data["taufe"] = (
-                "Taufe " + ", ".join(taufnamen) if len(taufnamen) > 0 else ""
+                "Taufe " + data["taufe_lastname"]
+                if len(data["taufe_lastname"]) > 0
+                else ""
             )
             logger.debug("finished preparing taufe attributes")
 
+            # Abendmahl detecte by service assignments
             abendmahl = []
             for service_id in DEFAULTS.get("abendmahl_service_ids", []):
                 abendmahl.extend(
