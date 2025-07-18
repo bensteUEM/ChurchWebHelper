@@ -23,7 +23,16 @@ from communi_api.churchToolsActions import (
 )
 from communi_api.communi_api import CommuniApi
 from dateutil.relativedelta import relativedelta
-from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from flask import (
+    Flask,
+    Response,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 from matplotlib import pyplot as plt
 
 from flask_session import Session
@@ -66,7 +75,7 @@ def index():
 
 
 @app.before_request
-def check_session():
+def check_session() -> Response | None:
     """Session variable should contain ct_api and communi_api.
 
     If not a redirect to respective login pages should be executed
@@ -83,7 +92,7 @@ def check_session():
 
 
 @app.route("/ct/login", methods=["GET", "POST"])
-def login_ct():
+def login_ct() -> str:
     """Update login information for CT."""
     if request.method == "POST":
         user = request.form["ct_user"]
@@ -106,7 +115,7 @@ def login_ct():
 
 
 @app.route("/communi/login", methods=["GET", "POST"])
-def login_communi():
+def login_communi() -> str:
     """Update login information for Communi Login."""
     if request.method == "POST":
         communi_server = request.form["communi_server"]
@@ -133,18 +142,18 @@ def login_communi():
 
 
 @app.route("/main")
-def main():
+def main() -> str:
     return render_template("main.html", version=app.config["VERSION"])
 
 
 @app.route("/test")
-def test():
+def test() -> str:
     test = app.config["CT_DOMAIN"], app.config["COMMUNI_SERVER"]
     return render_template("test.html", test=test)
 
 
 @app.route("/communi/events")
-def communi_events():
+def communi_events() -> Response | str:
     """This page is used to admin communi groups based on churchtools planning information.
 
     It will list all events from past 14 and future 15 days and show their link if they exist
@@ -195,7 +204,7 @@ def communi_events():
 
 
 @app.route("/events", methods=["GET", "POST"])
-def events():
+def events() -> Response | str:
     if request.method == "GET":
         session["serviceGroups"] = session["ct_api"].get_event_masterdata(
             resultClass="serviceGroups", returnAsDict=True
@@ -263,7 +272,7 @@ def events():
 
 
 @app.route("/ct/calendar_appointments")
-def ct_calendar_appointments():
+def ct_calendar_appointments() -> str:
     """Page which can be used to display ChurchTools calendar appointments for IFrame use.
 
     Use get param calendar_id=2 or similar to define a calendar
@@ -387,7 +396,7 @@ def ct_calendar_appointments():
 
 
 @app.route("/ct/service_workload", methods=["GET", "POST"])
-def ct_service_workload():
+def ct_service_workload() -> str:
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
@@ -615,7 +624,7 @@ def ct_service_workload():
 
 
 @app.route("/ct/contacts", methods=["GET"])
-def ct_contacts():
+def ct_contacts() -> str:
     """Vcard export for ChurchTools contacts.
 
     Generates VCards for Name / Phone number for all available persons
