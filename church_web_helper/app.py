@@ -292,7 +292,7 @@ def download_plan_months() -> str:
         "special_day_calendar_ids": [52, 72],
         "selected_calendars": [2],
         "available_resource_type_ids": [4, 6, 5],
-        "selected_resources": [8, 20, 21, 16, 17],
+        "selected_resources": [-1, 8, 20, 21, 16, 17],
         "selected_program_services": [1],
         "selected_title_prefix_groups": [89, 355, 358, 361, 367, 370, 373],
         "selected_music_services": [9, 61],
@@ -311,9 +311,12 @@ def download_plan_months() -> str:
     resources = session["ct_api"].get_resource_masterdata(resultClass="resources")
     # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization
     available_resources = {
-        resource["id"]: resource["name"]
-        for resource in resources
-        if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
+        -1: "Ortsangabe nicht ausgewählt",
+        **{
+            resource["id"]: resource["name"]
+            for resource in resources
+            if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
+        },
     }
 
     event_masterdata = session["ct_api"].get_event_masterdata()
@@ -465,6 +468,9 @@ def download_plan_months() -> str:
                 data["location"] = data["location"][0]
             else:
                 data["location"] = "Ortsangabe nicht ausgewählt"
+                if -1 not in selected_resources:
+                    #-1 is a special case added to available resources manually
+                    continue  # don't add calendar appointment to entries
 
             replacements = {
                 "Marienkirche": "Marienkirche Baiersbronn",
@@ -515,7 +521,7 @@ def download_plan_months() -> str:
 
         if action == "DOCx Document Download":
             document = get_plan_months_docx(df_data, from_date=from_date)
-            filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.docx"
+            filename = f"Monatsplan_{from_date.strftime('%Y_%B')}.docx"
             document.save(filename)
             response = send_file(
                 path_or_file=os.getcwd() + "/" + filename, as_attachment=True

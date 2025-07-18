@@ -367,16 +367,20 @@ def get_primary_resource(
     api: CTAPI,
     considered_resource_ids: list[int],
 ) -> str:
-    """Helper which is used to get the primary resource allocation of an event
+    """Helper which is used to get the primary resource allocation of an event.
 
     Args:
         appointment_id: id of calendar entry
         relevant_date: the date of the appointment is required because appointment_id is not unique on repetitions
-        considered_resource_ids: resource ids to consider
+        considered_resource_ids: resource ids to consider - ignores negative numbers as special case on purpse
 
     Returns:
         shortened resource representation
     """
+    considered_resource_ids = [
+        resource_id for resource_id in considered_resource_ids if resource_id > 0
+    ]
+
     bookings = api.get_bookings(
         resource_ids=considered_resource_ids,
         from_=relevant_date,
