@@ -6,14 +6,13 @@ import locale
 import logging
 import logging.config
 import os
-from datetime import datetime, time
 import re
 import urllib
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from pathlib import Path
 
-import pytz
 import pandas as pd
+import pytz
 import toml
 import vobject
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
@@ -52,10 +51,10 @@ with config_file.open(encoding="utf-8") as f_in:
 from church_web_helper.helper import (
     deduplicate_df_index_with_lists,
     extract_relevant_calendar_appointment_shortname,
+    get_group_name_services,
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
-    get_group_name_services,
     get_title_name_services,
 )
 
@@ -252,7 +251,7 @@ def download_events() -> str:
             event_choices=event_choices,
             service_groups=session["serviceGroups"],
         )
-    elif request.method == "POST":
+    if request.method == "POST":
         if "event_id" not in request.form.keys():
             return redirect(url_for("download_events"))
         event_id = int(request.form["event_id"])
@@ -372,7 +371,7 @@ def download_plan_months() -> str:
             from_date=from_date,
             to_date=to_date,
         )
-    elif request.method == "POST":
+    if request.method == "POST":
         from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
         to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
 
@@ -514,7 +513,7 @@ def download_plan_months() -> str:
                 to_date=to_date,
             )
 
-        elif action == "DOCx Document Download":
+        if action == "DOCx Document Download":
             document = get_plan_months_docx(df_data, from_date=from_date)
             filename = f"Monatsplan_{from_date.strftime("%Y_%B")}.docx"
             document.save(filename)

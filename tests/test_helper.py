@@ -1,20 +1,20 @@
-from datetime import datetime
 import os
-from typing import Tuple
+from datetime import datetime
+
+import docx
 import pandas as pd
 import pytest
-import docx
+from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
+    get_group_name_services,
     get_group_title_of_person,
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
-    get_group_name_services,
     get_title_name_services,
 )
-from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 
 
 class Test_Helper:
@@ -115,7 +115,7 @@ class Test_Helper:
     def test_get_primary_resource(self):
         SAMPLE_EVENT_ID = 330754
         SAMPLE_DATE = datetime(year=2024, month=9, day=29)
-        EXPECTED_RESULT = {'Michaelskirche (MIKI)'}
+        EXPECTED_RESULT = {"Michaelskirche (MIKI)"}
         RESOURCE_IDS = [8,16,17,20,21]
 
         result = get_primary_resource(appointment_id=SAMPLE_EVENT_ID,
@@ -124,7 +124,7 @@ class Test_Helper:
                                     considered_resource_ids=RESOURCE_IDS,
                                     )
 
-        assert EXPECTED_RESULT == result
+        assert result == EXPECTED_RESULT
 
     def test_get_title_name_services(self):
         SAMPLE_CALENDAR_IDS=[2]
@@ -133,22 +133,22 @@ class Test_Helper:
         SAMPLE_SERVICES = [1]
         SAMPLE_GROUPS_FOR_PREFIX = [89,355,358,361,367,370,373]
 
-        result = get_title_name_services(calendar_ids= SAMPLE_CALENDAR_IDS, 
+        result = get_title_name_services(calendar_ids= SAMPLE_CALENDAR_IDS,
                                         appointment_id= SAMPLE_APPOINTMENT_ID,
                                         relevant_date = SAMPLE_DATE,
                                         considered_program_services = SAMPLE_SERVICES,
                                         considered_groups=SAMPLE_GROUPS_FOR_PREFIX,
                                         api = self.ct_api,
         )
-        
+
         EXPECTED_RESULT = "Pfarrer Vögele"
-        assert EXPECTED_RESULT == result
+        assert result == EXPECTED_RESULT
 
     @pytest.mark.parametrize(
         "person_id, relevant_groups, expected_result",
         [
-            (51, [367,89,355,358], "Pfarrer"), 
-            (51, [], ""), 
+            (51, [367,89,355,358], "Pfarrer"),
+            (51, [], ""),
             (822, [367,89,355,358], "Pfarrerin"),
             (110, [367,89,355,358], "Prädikant"),
             (205, [367,89,355,358], "Pfarrer i.R."),
@@ -179,8 +179,8 @@ class Test_Helper:
         "appointment_id, relevant_date, considered_services, expected_result",
         [
             (327886, datetime(year=2024, month=9, day=29), [9,61], ""),
-            (330754, datetime(year=2024, month=9, day=29), [9,61], "mit Kirchenchor"), 
-            (330754, datetime(year=2024, month=9, day=29), [], ""), 
+            (330754, datetime(year=2024, month=9, day=29), [9,61], "mit Kirchenchor"),
+            (330754, datetime(year=2024, month=9, day=29), [], ""),
             (330763, datetime(year=2024, month=9, day=29), [9,61], "mit InJoy Chor"),  #Testing "mit InJoy Chor, Kirchenchor"
             (327847, datetime(year=2024, month=9, day=8), [9,61], "mit Posaunenchor"), # Testing "mit Kirchenchor und Posaunenchor"
         ],
@@ -217,7 +217,7 @@ def test_compare_docx_files():
 
 def compare_docx_files(
     document1: docx.Document, document2: docx.Document
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Compare both text and table content of two docx files.
 
     Args:
@@ -228,7 +228,6 @@ def compare_docx_files(
         bool - if is equal
         text - description of difference
     """
-
     # Compare text
     text1 = get_docx_text(document1)
     text2 = get_docx_text(document2)
@@ -275,11 +274,11 @@ def compare_tables(tables1, tables2):
     if len(tables1) != len(tables2):
         return False
 
-    for table1, table2 in zip(tables1, tables2):
+    for table1, table2 in zip(tables1, tables2, strict=True):
         if len(table1) != len(table2):
             return False
 
-        for row1, row2 in zip(table1, table2):
+        for row1, row2 in zip(table1, table2, strict=True):
             if row1 != row2:
                 return False
 

@@ -3,20 +3,21 @@
 It is used to outsource parts which don't need to be part of app.py
 """
 
-from collections import OrderedDict
 import logging
-from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
-from dateutil.relativedelta import relativedelta
+from collections import OrderedDict
+from datetime import datetime
 
-from datetime import datetime, timedelta
 import docx
-from docx.shared import Pt, RGBColor, Cm
 import docx.table
 import pandas as pd
+from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
+from dateutil.relativedelta import relativedelta
 from docx.oxml import OxmlElement, ns
 from docx.oxml.ns import qn
+from docx.shared import Cm, Pt, RGBColor
 
 logger = logging.getLogger(__name__)
+
 
 def get_special_day_name(
     ct_api: CTAPI, special_name_calendar_ids: list[int], date: datetime
@@ -106,7 +107,6 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
     Returns:
         document reference
     """
-
     document = docx.Document()
     padding_left = 1.5
     padding_right = -0.25
@@ -119,7 +119,7 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
         right=0.25 - padding_right,
     )
 
-    heading = f"Unsere Gottesdienste im {from_date.strftime("%B %Y")}"
+    heading = f"Unsere Gottesdienste im {from_date.strftime('%B %Y')}"
     paragraph = document.add_heading(heading)
     for run in paragraph.runs:
         run.bold = True
@@ -177,17 +177,16 @@ def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
     Returns:
         flattened df which has unique shortDay and combined lists in cells
     """
-
     shortDays = list(OrderedDict.fromkeys(df_input["shortDay"]).keys())
     df_output = pd.DataFrame(columns=df_input.columns)
     for shortDay in shortDays:
         df_shortDay = df_input[df_input["shortDay"] == shortDay]
         new_index = len(df_output)
         df_output.loc[new_index] = [pd.NA] * df_output.shape[1]
-        df_output.loc[new_index,"shortDay"] = df_shortDay["shortDay"].iloc[0]
-        df_output.loc[new_index, "specialDayName"] = df_shortDay[
-            "specialDayName"
-        ].iloc[0]
+        df_output.loc[new_index, "shortDay"] = df_shortDay["shortDay"].iloc[0]
+        df_output.loc[new_index, "specialDayName"] = df_shortDay["specialDayName"].iloc[
+            0
+        ]
 
         locations = OrderedDict.fromkeys(i[0] for i in df_shortDay.columns[2:])
         for location in locations:
@@ -215,7 +214,7 @@ def deduplicate_df_index_with_lists(df_input: pd.DataFrame) -> pd.DataFrame:
 def generate_event_paragraph(
     target_cell: docx.table._Cell, relevant_entry: pd.Series
 ) -> None:
-    """function which generates the content of one table cell.
+    """Function which generates the content of one table cell.
 
     Used with get_plan_months_docx
     Iterates through all items in relevant row and using the columns to generate the text.
@@ -251,7 +250,7 @@ def generate_event_paragraph(
             )
         if relevant_entry["predigt"][entry_index]:
             current_paragraph.runs[-1].add_break()
-            current_paragraph.add_run(f"({relevant_entry["predigt"][entry_index]})")
+            current_paragraph.add_run(f"({relevant_entry['predigt'][entry_index]})")
 
 
 def change_table_format(table: docx.table) -> None:
@@ -260,7 +259,6 @@ def change_table_format(table: docx.table) -> None:
     Args:
         table: the table to modify
     """
-
     # Access the XML element of the table and move ident because by default it's 1,9cm off
     tbl_pr = table._element.xpath("w:tblPr")[0]
     tbl_indent = OxmlElement("w:tblInd")
@@ -362,10 +360,13 @@ def set_cell_margins(cell, top=0, start=0, bottom=0, end=0):
         margin_element.set(ns.qn("w:type"), "dxa")  # dxa = 1/20th of a point
         tcMar.append(margin_element)
 
-def get_primary_resource(appointment_id:int,
-                        relevant_date:datetime,
-                        api:CTAPI,
-                        considered_resource_ids:list[int],)->str:
+
+def get_primary_resource(
+    appointment_id: int,
+    relevant_date: datetime,
+    api: CTAPI,
+    considered_resource_ids: list[int],
+) -> str:
     """Helper which is used to get the primary resource allocation of an event
 
     Args:
@@ -376,28 +377,29 @@ def get_primary_resource(appointment_id:int,
     Returns:
         shortened resource representation
     """
-    bookings = api.get_bookings(resource_ids=considered_resource_ids,
-                                from_=relevant_date,
-                                to_=relevant_date,
-                                appointment_id=appointment_id)
+    bookings = api.get_bookings(
+        resource_ids=considered_resource_ids,
+        from_=relevant_date,
+        to_=relevant_date,
+        appointment_id=appointment_id,
+    )
     locations = {booking["base"]["resource"]["name"] for booking in bookings}
 
     return locations
 
+
 def get_title_name_services(
-                        calendar_ids : list[int],
-                        appointment_id:int,
-                        relevant_date:datetime,
-                        api:CTAPI,
-                        considered_program_services:list[int],
-                        considered_groups:list[int],
-                        )->str:
-                        
-    """
-    Helper function which retrieves a text representation of a service including the persons title based on considered groups.
+    calendar_ids: list[int],
+    appointment_id: int,
+    relevant_date: datetime,
+    api: CTAPI,
+    considered_program_services: list[int],
+    considered_groups: list[int],
+) -> str:
+    """Helper function which retrieves a text representation of a service including the persons title based on considered groups.
 
     1. Lookup relevant services
-    2. Lookup the prefix of the person to be used based on group assignemnts 
+    2. Lookup the prefix of the person to be used based on group assignemnts
 
     Args:
         calendar_ids: list of calendars to consider
@@ -410,19 +412,25 @@ def get_title_name_services(
     Returns:
         formatted useable string with title and name
     """
-    relevant_event = api.get_event_by_calendar_appointment(appointment_id=appointment_id, start_date=relevant_date)
+    relevant_event = api.get_event_by_calendar_appointment(
+        appointment_id=appointment_id, start_date=relevant_date
+    )
 
     relevant_persons = []
     for service_id in considered_program_services:
-        relevant_persons.extend(api.get_persons_with_service(eventId=relevant_event['id'],serviceId=service_id))
+        relevant_persons.extend(
+            api.get_persons_with_service(
+                eventId=relevant_event["id"], serviceId=service_id
+            )
+        )
 
     names_with_title = []
     for person in relevant_persons:
-        title_prefix = get_group_title_of_person(person_id=person['personId'],
-                                                relevant_groups=considered_groups,
-                                                api=api)
+        title_prefix = get_group_title_of_person(
+            person_id=person["personId"], relevant_groups=considered_groups, api=api
+        )
         if person["personId"]:
-            lastname = person['person']['domainAttributes']['lastName']
+            lastname = person["person"]["domainAttributes"]["lastName"]
             formatted_name = f"{title_prefix} {lastname}".lstrip()
         else:
             formatted_name = "Noch unbekannt"
@@ -430,7 +438,10 @@ def get_title_name_services(
 
     return ", ".join(names_with_title)
 
-def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAPI) ->str:
+
+def get_group_title_of_person(
+    person_id: int, relevant_groups: list[int], api: CTAPI
+) -> str:
     """Retrieve name of first group for specified person and gender if possible
 
     Args:
@@ -442,12 +453,14 @@ def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAP
         view person
         view alldata (Persons)
         view group
-        
+
     Returns:
         Prefix which is used as title incl. gendered version
     """
     for group_id in relevant_groups:
-        group_member_ids = [group["personId"] for group in api.get_group_members(group_id=group_id)]
+        group_member_ids = [
+            group["personId"] for group in api.get_group_members(group_id=group_id)
+        ]
         if person_id in group_member_ids:
             group_name = api.get_groups(group_id=group_id)[0]["name"]
             break
@@ -461,21 +474,22 @@ def get_group_title_of_person(person_id:int, relevant_groups:list[int], api:CTAP
 
     person_sex_id = person["sexId"]
     if not person_sex_id:
-        person_sex_id = 0 #TODO@bensteUEM: workaround for https://github.com/bensteUEM/ChurchToolsAPI/issues/273
-    if gender_map[person_sex_id] == "sex.female" and len(group_name)>0:
+        person_sex_id = 0  # TODO@bensteUEM: workaround for https://github.com/bensteUEM/ChurchToolsAPI/issues/273
+    if gender_map[person_sex_id] == "sex.female" and len(group_name) > 0:
         parts = group_name.split(" ")
-        part1_gendered = parts[0]+"in"
-        group_name = " ".join([part1_gendered]+parts[1:])
+        part1_gendered = parts[0] + "in"
+        group_name = " ".join([part1_gendered] + parts[1:])
     return group_name
 
-def get_group_name_services(calendar_ids : list[int],
-                        appointment_id:int,
-                        relevant_date:datetime,
-                        api:CTAPI,
-                        considered_music_services:list[int],
-                        considered_grouptype_role_ids:list[int]
-                        )->str:
-                        
+
+def get_group_name_services(
+    calendar_ids: list[int],
+    appointment_id: int,
+    relevant_date: datetime,
+    api: CTAPI,
+    considered_music_services: list[int],
+    considered_grouptype_role_ids: list[int],
+) -> str:
     """Helper which will retrieve the name of special services involved with the calendar appointment on that day.
 
     1. get event
@@ -498,22 +512,37 @@ def get_group_name_services(calendar_ids : list[int],
     Returns:
         text which can be used as suffix - empty in case no special service
     """
-    
-    relevant_event = api.get_event_by_calendar_appointment(appointment_id=appointment_id, start_date=relevant_date)
+    relevant_event = api.get_event_by_calendar_appointment(
+        appointment_id=appointment_id, start_date=relevant_date
+    )
 
     result_groups = []
     for service in considered_music_services:
-        service_assignments = api.get_persons_with_service(eventId=relevant_event['id'],serviceId=service)
-        persons = [service['person'] for service in service_assignments]
-        relevant_group_results = [service["groupIds"] for service in api.get_event_masterdata()["services"] if service['id'] in considered_music_services]
-        considered_group_ids = {int(group_id) for group_result in relevant_group_results for group_id in group_result}
+        service_assignments = api.get_persons_with_service(
+            eventId=relevant_event["id"], serviceId=service
+        )
+        persons = [service["person"] for service in service_assignments]
+        relevant_group_results = [
+            service["groupIds"]
+            for service in api.get_event_masterdata()["services"]
+            if service["id"] in considered_music_services
+        ]
+        considered_group_ids = {
+            int(group_id)
+            for group_result in relevant_group_results
+            for group_id in group_result
+        }
         for person in persons:
-            group_assignemnts = api.get_groups_members(group_ids=considered_group_ids,
-                                            grouptype_role_ids=considered_grouptype_role_ids,
-                                            person_ids=[int(person['domainIdentifier'])])
-            relevant_group_ids = [group['groupId'] for group in group_assignemnts]
+            group_assignemnts = api.get_groups_members(
+                group_ids=considered_group_ids,
+                grouptype_role_ids=considered_grouptype_role_ids,
+                person_ids=[int(person["domainIdentifier"])],
+            )
+            relevant_group_ids = [group["groupId"] for group in group_assignemnts]
             for group_id in relevant_group_ids:
                 group = api.get_groups(group_id=group_id)[0]
-                result_groups.append(group["name"])    
-    result_string = "mit "+ " und ".join(result_groups) if len(result_groups) > 0 else ""
+                result_groups.append(group["name"])
+    result_string = (
+        "mit " + " und ".join(result_groups) if len(result_groups) > 0 else ""
+    )
     return result_string
