@@ -153,8 +153,10 @@ def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Docume
 
     change_table_format(table=table)
 
-    FOOTER_TEXTs = [
-        "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: Juliane Haas, Tel: 604467 oder Bärbel Vögele, Tel.:121136",
+    FOOTER_TEXTs = [  # noqa: N806
+        "Sonntags um 10.00 Uhr findet regelmäßig Kinderkirche in Baiersbronn statt. "
+        "Bei Interesse melden Sie sich bitte direkt bei den Mitarbeitenden.: "
+        "Juliane Haas, Tel: 604467",
         "Aktuelle und weitere Termine auch auf unserer Website",
     ]
     for footer_text in FOOTER_TEXTs:
