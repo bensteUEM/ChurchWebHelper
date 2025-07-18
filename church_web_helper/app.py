@@ -69,36 +69,42 @@ def index():
 def check_session():
     """Session variable should contain ct_api and communi_api.
 
-    if BasicAuth is provided ct_api is initialzed with domain from config 
+    if BasicAuth is provided ct_api is initialzed with domain from config
     If not a redirect to respective login pages should be executed
     """
 
     username, password = None, None
 
-    if auth_header := request.headers.get('Authorization'):
-        if auth_header and auth_header.startswith('Basic '):
-            # Strip "Basic " from the beginning of the header and decode the rest
-            auth_encoded = auth_header.split(' ')[1]
-            auth_decoded = base64.b64decode(auth_encoded).decode('utf-8')
-            
-            # Split the decoded string into username and password
-            username, password = auth_decoded.split(':', 1)
+    if (auth_header := request.headers.get("Authorization")) and auth_header.startswith(
+        "Basic "
+    ):
+        # Strip "Basic " from the beginning of the header and decode the rest
+        auth_encoded = auth_header.split(" ")[1]
+        auth_decoded = base64.b64decode(auth_encoded).decode("utf-8")
+
+        # Split the decoded string into username and password
+        username, password = auth_decoded.split(":", 1)
 
     if request.endpoint not in ("login_ct", "login_communi"):
-        #Check CT Login - required for all pages
+        # Check CT Login - required for all pages
         if not session.get("ct_api"):
             if username and password:
-                session["ct_api"] = CTAPI(app.config["CT_DOMAIN"], ct_user=username, ct_password=password)
+                session["ct_api"] = CTAPI(
+                    app.config["CT_DOMAIN"], ct_user=username, ct_password=password
+                )
             else:
                 return redirect(url_for("login_ct"))
         elif not session["ct_api"].who_am_i():
             return redirect(url_for("login_ct"))
-        
-        #Check Communi Login
-        FUNCTIONS_THAT_REQUIRE_COMMUNI = ["communi_events"]
-        if request.endpoint in FUNCTIONS_THAT_REQUIRE_COMMUNI:
-            if not session.get("communi_api") or not session["communi_api"].who_am_i():
-                return redirect(url_for("login_communi"))
+
+        # Check Communi Login
+        FUNCTIONS_THAT_REQUIRE_COMMUNI = ["communi_events", "ct_posts"]  # noqa: N806
+        if request.endpoint in FUNCTIONS_THAT_REQUIRE_COMMUNI and not (
+            session.get("communi_api") and session["communi_api"].who_am_i()
+        ):
+            return redirect(url_for("login_communi"))
+    return None
+
 
 @app.route("/ct/login", methods=["GET", "POST"])
 def login_ct():
@@ -287,7 +293,7 @@ def ct_calendar_appointments():
     Use get param calendar_id=2 or similar to define a calendar
     Use get param days to specify the number of days
     Use optional get param services to specify a , separated list of service IDs to include
-    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using 
+    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using
     """
     # default params if not specified
     DEFAULT_CALENDAR_ID = 2
@@ -412,7 +418,9 @@ def ct_service_workload():
 
     available_service_categories = {
         serviceGroup["id"]: serviceGroup["name"]
-        for serviceGroup in session["ct_api"].get_event_masterdata(resultClass="serviceGroups")
+        for serviceGroup in session["ct_api"].get_event_masterdata(
+            resultClass="serviceGroups"
+        )
     }
     available_service_types_by_category = {
         key: [] for key in available_service_categories
@@ -630,14 +638,13 @@ def ct_service_workload():
     )
 
 
-@app.route("/ct/contacts",  methods=["GET"])
+@app.route("/ct/contacts", methods=["GET"])
 def ct_contacts():
     """Vcard export for ChurchTools contacts.
 
     Generates VCards for Name / Phone number for all available persons
     """
     if request.args.get("download"):
-
         persons = session["ct_api"].get_persons()
         vcards = []
         for person in persons:
@@ -645,7 +652,7 @@ def ct_contacts():
 
             # Add a full name
             vcard.add("fn")
-            vcard.fn.value = f"{person["firstName"]} {person["lastName"]}"
+            vcard.fn.value = f"{person['firstName']} {person['lastName']}"
 
             # Add a HOME phone number
             home_tel = vcard.add("tel")
@@ -675,48 +682,72 @@ def ct_contacts():
         output.seek(0)
 
         # Send the file as a download
-        return send_file(output, as_attachment=True, download_name="ct_contacts.vcf", mimetype="text/vcard")
-
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="ct_contacts.vcf",
+            mimetype="text/vcard",
+        )
 
     return render_template("ct_contacts.html")
 
 
 @app.route(
     "/ct/posts",
-    methods=[
-        "GET",
-    ],
+    methods=["GET", "POST"],
 )
-def ct_posts():
+def ct_posts() -> str:
     """Posts to Communi from ChurchTools Beiträge.
+
     Used to assist with reposting entries from ChurchTools to Communi.
+    use DEFAULT_GROUP_ID to pre-select your most frequently used group
     """
     posts = session.get("ct_api").get_posts()
+    available_groups = {
+        group["id"]: group["title"] for group in session["communi_api"].getGroups()
+    }
 
-    if action := request.args.get("action"):
-        post_id = request.args.get("post_id", type=int)
+    DEFAULT_GROUP_ID = 65021  # noqa: N806
+
+    if request.method == "GET":  # set defaults if case of new request
+        selected_group = DEFAULT_GROUP_ID
+
+    elif request.method == "POST" and (
+        (selected_group := request.form.get("selected_group", type=int))
+        and (post_id := request.form.get("repost_post_id", type=int))
+    ):
         posts = [post for post in posts if post["id"] == post_id]
         post = posts[0]
 
-        GROUP_ID = 12508
-        base_url = re.match(r"^(https?:\/\/[^/]+)(?:.*)",post.get("group").get("apiUrl")).group(1)
+        GROUP_ID = selected_group
+        base_url = re.match(
+            r"^(https?:\/\/[^/]+)(?:.*)", post.get("group").get("apiUrl")
+        ).group(1)
 
         session["communi_api"].recommendation(
             group_id=GROUP_ID,
-            title=post.get("title"),
+            title=f"{post.get('title')} ({post['group']['title']})",
             description=post.get("content"),
             post_date=datetime.strptime(
                 post.get("publishedDate"), "%Y-%m-%dT%H:%M:%SZ"
             ).astimezone(),
             pic_url=post.get("images")[0] if len(post.get("images")) > 0 else "",
             link=f"{base_url}/posts/{post.get('id')}",
-            is_official=False,
+            is_official=True,
         )
 
         return render_template(
             "ct_posts.html",
             posts=posts,
+            available_groups=available_groups,
+            selected_group=selected_group,
             message=f"Reposted {post.get('title')} to Communi",
         )
 
-    return render_template("ct_posts.html", posts=posts, message=None)
+    return render_template(
+        "ct_posts.html",
+        posts=posts,
+        message=None,
+        available_groups=available_groups,
+        selected_group=selected_group,
+    )

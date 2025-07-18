@@ -5,59 +5,71 @@
 <body>
     {% include 'error.html' %}
     {% include 'navbar.html' %}
-    <div class="container">
-        <div>This page allows to repost ChurchTools Posts to a Communi group</div>
-        <table class="table table-striped">
-            <thead>
-                <tr class="table-primary">
-                    <th scope="col">ID</th>
-                    <th scope="col">Author</th>
-                    <th scope="col">Title</th>
-                    <th scope="col">Content</th>
-                    <th scope="col">Images</th>
-                    <th scope="col">Publication Date</th>
-                    <th scope="col">actions</th>
-                </tr>
-            </thead>
-    </div>
-</body>
+    <form action="{{ url_for('ct_posts') }}" class="form-floating mb-3" method="POST">
+        <div class="container">
 
-<div class="form-group">
-    {% for post in posts %}
-    <tr>
-        <th scope="row">
-            {{post.id}}
-        </th>
-        <td>
-            {{post.actor.title}}
-        </td>
-        <td>
-            {{post.title}}
-        </td>
-        <td>
-            {{post.content}}
-        </td>
-        <td>
-            {% for image in post.images %}
-            <img src="{{image}}" alt="post image from churchtools">
-            {% endfor %}
-        </td>
-        <td>
-            {{post.publishedDate}}
-        </td>
-        <td>
-            <div class="row">
+            <div class="mb-3">This page allows to repost ChurchTools Posts to a Communi group</div>
+            <div class="form-group">
+                <div>
+                    <label for="selected_groups" class="form-label">ZielGruppe</label>
+                    <select class="form-select mb-3" aria-label="select group_id" id="selected_group"
+                        name="selected_group">
+                        {% for group_id, group_name in available_groups.items() %}
+                        <option {% if group_id==selected_group %} selected{% endif %} value="{{group_id}}">
+                            {{group_name}}</option>
+                        {% endfor %}
+                    </select>
 
-                <div class="col">
-                    <a href="?action=repost&post_id={{post.id}}">
-                        Repost
-                    </a>
                 </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr class="table-primary">
+                            <th scope="col">ID</th>
+                            <th scope="col">Author</th>
+                            <th scope="col">Title</th>
+                            <th scope="col">Content</th>
+                            <th scope="col">Images</th>
+                            <th scope="col">Publication Date</th>
+                            <th scope="col">actions</th>
+                        </tr>
+                    </thead>
+                    {% for post in posts %}
+                    <tr>
+                        <th scope="row">
+                            {{post.id}}
+                        </th>
+                        <td>
+                            {{post.actor.title}}
+                        </td>
+                        <td>
+                            {{post.title}}
+                        </td>
+                        <td>
+                            {{post.content}}
+                        </td>
+                        <td>
+                            {% for image in post.images %}
+                            <img src="{{image}}" alt="post image from churchtools">
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {{post.publishedDate}}
+                        </td>
+                        <td>
+                            <div class="row">
+                                <div class="col">
+                                    <button type="submit" name="repost_post_id" value="{{post.id}}"
+                                        class="btn btn-sm btn-outline-primary me-2">Repost</button>
+                                </div>
 
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <table>
             </div>
-        </td>
-        {% endfor %}
-</div>
-
+        </div>
+    </form>
+</body>
 
 </html>
