@@ -25,7 +25,16 @@ from communi_api.churchToolsActions import (
 )
 from communi_api.communi_api import CommuniApi
 from dateutil.relativedelta import relativedelta
-from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from flask import (
+    Flask,
+    Response,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 from matplotlib import pyplot as plt
 
 from flask_session import Session
@@ -80,16 +89,16 @@ def index():
 
 
 @app.before_request
-def check_session():
+def check_session() -> Response | None:
     """Session variable should contain ct_api and communi_api.
 
     If not a redirect to respective login pages should be executed
     """
     if request.endpoint not in ("login_ct", "login_communi"):
-        #Check CT Login
+        # Check CT Login
         if not session.get("ct_api") or not session["ct_api"].who_am_i():
             return redirect(url_for("login_ct"))
-        #Check Communi Login
+        # Check Communi Login
         if not session.get("communi_api") or not session["communi_api"].who_am_i():
             return redirect(url_for("login_communi"))
         return None
@@ -97,7 +106,7 @@ def check_session():
 
 
 @app.route("/ct/login", methods=["GET", "POST"])
-def login_ct():
+def login_ct() -> str:
     """Update login information for CT."""
     if request.method == "POST":
         user = request.form["ct_user"]
@@ -120,7 +129,7 @@ def login_ct():
 
 
 @app.route("/communi/login", methods=["GET", "POST"])
-def login_communi():
+def login_communi() -> str:
     """Update login information for Communi Login."""
     if request.method == "POST":
         communi_server = request.form["communi_server"]
@@ -147,18 +156,18 @@ def login_communi():
 
 
 @app.route("/main")
-def main():
+def main() -> str:
     return render_template("main.html", version=app.config["VERSION"])
 
 
 @app.route("/test")
-def test():
+def test() -> str:
     test = app.config["CT_DOMAIN"], app.config["COMMUNI_SERVER"]
     return render_template("test.html", message=test)
 
 
 @app.route("/communi/events")
-def communi_events():
+def communi_events() -> Response | str:
     """This page is used to admin communi groups based on churchtools planning information.
 
     It will list all events from past 14 and future 15 days and show their link if they exist
@@ -209,7 +218,7 @@ def communi_events():
 
 
 @app.route("/download/events", methods=["GET", "POST"])
-def download_events():
+def download_events() -> str:
     if request.method == "GET":
         session["serviceGroups"] = session["ct_api"].get_event_masterdata(
             resultClass="serviceGroups", returnAsDict=True
@@ -277,7 +286,7 @@ def download_events():
 
 
 @app.route("/download/plan_months", methods=["GET", "POST"])
-def download_plan_months():
+def download_plan_months() -> str:
     # default params are set ELKW1610.krz.tools specific and must be adjusted in case a different CT instance is used
     DEFAULTS = {
         "default_timeframe_months": 1,
@@ -514,16 +523,16 @@ def download_plan_months():
             )
             os.remove(filename)
             return response
-
+    return None
 
 @app.route("/ct/calendar_appointments")
-def ct_calendar_appointments():
+def ct_calendar_appointments() -> str:
     """Page which can be used to display ChurchTools calendar appointments for IFrame use.
 
     Use get param calendar_id=2 or similar to define a calendar
     Use get param days to specify the number of days
     Use optional get param services to specify a , separated list of service IDs to include
-    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using 
+    use optional get param special_name to specify calendar id for special day names - using first event on that day multiple calendars can be specified using
     """
     # default params if not specified
     DEFAULT_CALENDAR_ID = 2
@@ -645,14 +654,16 @@ def ct_calendar_appointments():
 
 
 @app.route("/ct/service_workload", methods=["GET", "POST"])
-def ct_service_workload():
+def ct_service_workload() -> str:
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
 
     available_service_categories = {
         serviceGroup["id"]: serviceGroup["name"]
-        for serviceGroup in session["ct_api"].get_event_masterdata(resultClass="serviceGroups")
+        for serviceGroup in session["ct_api"].get_event_masterdata(
+            resultClass="serviceGroups"
+        )
     }
     available_service_types_by_category = {
         key: [] for key in available_service_categories
@@ -870,14 +881,13 @@ def ct_service_workload():
     )
 
 
-@app.route("/ct/contacts",  methods=["GET"])
-def ct_contacts():
+@app.route("/ct/contacts", methods=["GET"])
+def ct_contacts() -> str:
     """Vcard export for ChurchTools contacts.
 
     Generates VCards for Name / Phone number for all available persons
     """
     if request.args.get("download"):
-
         persons = session["ct_api"].get_persons()
         vcards = []
         for person in persons:
@@ -885,7 +895,7 @@ def ct_contacts():
 
             # Add a full name
             vcard.add("fn")
-            vcard.fn.value = f"{person["firstName"]} {person["lastName"]}"
+            vcard.fn.value = f"{person['firstName']} {person['lastName']}"
 
             # Add a HOME phone number
             home_tel = vcard.add("tel")
@@ -915,48 +925,72 @@ def ct_contacts():
         output.seek(0)
 
         # Send the file as a download
-        return send_file(output, as_attachment=True, download_name="ct_contacts.vcf", mimetype="text/vcard")
-
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name="ct_contacts.vcf",
+            mimetype="text/vcard",
+        )
 
     return render_template("ct_contacts.html")
 
 
 @app.route(
     "/ct/posts",
-    methods=[
-        "GET",
-    ],
+    methods=["GET", "POST"],
 )
-def ct_posts():
+def ct_posts() -> str:
     """Posts to Communi from ChurchTools Beiträge.
+
     Used to assist with reposting entries from ChurchTools to Communi.
+    use DEFAULT_GROUP_ID to pre-select your most frequently used group
     """
     posts = session.get("ct_api").get_posts()
+    available_groups = {
+        group["id"]: group["title"] for group in session["communi_api"].getGroups()
+    }
 
-    if action := request.args.get("action"):
-        post_id = request.args.get("post_id", type=int)
+    DEFAULT_GROUP_ID = 65021  # noqa: N806
+
+    if request.method == "GET":  # set defaults if case of new request
+        selected_group = DEFAULT_GROUP_ID
+
+    elif request.method == "POST" and (
+        (selected_group := request.form.get("selected_group", type=int))
+        and (post_id := request.form.get("repost_post_id", type=int))
+    ):
         posts = [post for post in posts if post["id"] == post_id]
         post = posts[0]
 
-        GROUP_ID = 12508
-        base_url = re.match(r"^(https?:\/\/[^/]+)(?:.*)",post.get("group").get("apiUrl")).group(1)
+        GROUP_ID = selected_group
+        base_url = re.match(
+            r"^(https?:\/\/[^/]+)(?:.*)", post.get("group").get("apiUrl")
+        ).group(1)
 
         session["communi_api"].recommendation(
             group_id=GROUP_ID,
-            title=post.get("title"),
+            title=f"{post.get('title')} ({post['group']['title']})",
             description=post.get("content"),
             post_date=datetime.strptime(
                 post.get("publishedDate"), "%Y-%m-%dT%H:%M:%SZ"
             ).astimezone(),
             pic_url=post.get("images")[0] if len(post.get("images")) > 0 else "",
             link=f"{base_url}/posts/{post.get('id')}",
-            is_official=False,
+            is_official=True,
         )
 
         return render_template(
             "ct_posts.html",
             posts=posts,
+            available_groups=available_groups,
+            selected_group=selected_group,
             message=f"Reposted {post.get('title')} to Communi",
         )
 
-    return render_template("ct_posts.html", posts=posts, message=None)
+    return render_template(
+        "ct_posts.html",
+        posts=posts,
+        message=None,
+        available_groups=available_groups,
+        selected_group=selected_group,
+    )
