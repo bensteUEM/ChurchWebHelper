@@ -1,4 +1,4 @@
-name: Python Unittest ChurchToolsAPI
+name: PyTest ChurchWebHelper
 
 on: [ push, pull_request ]
 
