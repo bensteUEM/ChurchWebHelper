@@ -6,6 +6,8 @@ env:
   CT_TOKEN: ${{ secrets.CT_TOKEN }}
   CT_USERS: ${{ secrets.CT_USERS }}
   CT_DOMAIN: ${{ vars.CT_DOMAIN }}
+  COMMUNI_SERVER: ${{ vars.COMMUNI_SERVER }}
+  COMMUNI_TOKEN: ${{ secrets.COMMUNI_TOKEN }}
 
 jobs:
   list-domain:
