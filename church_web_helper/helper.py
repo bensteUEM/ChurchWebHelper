@@ -3,6 +3,7 @@
 It is used to outsource parts which don't need to be part of app.py
 """
 
+import locale
 import logging
 from collections import OrderedDict
 from datetime import datetime
@@ -97,16 +98,23 @@ def extract_relevant_calendar_appointment_shortname(longname: str) -> str:
     return result
 
 
-def get_plan_months_docx(data: pd.DataFrame, from_date: datetime) -> docx.Document:
-    """Function which converts a Dataframe into a DOCx document used for final print modifications
+def get_plan_months_docx(
+    data: pd.DataFrame, from_date: datetime, apply_locale="de_DE.UTF-8"
+) -> docx.Document:
+    """Function which converts a Dataframe into a DOCx document used for final print modifications.
 
     Args:
         data: pre-formatted data to be used as base
         from_date: date used for heading
+        apply_locale: the locale to be used (in particular for date to text conversion) e.g.
+             "de_DE.UTF-8" (default)
+             'deu' (for windows)
 
     Returns:
         document reference
     """
+    locale.setlocale(locale.LC_TIME, apply_locale)
+
     document = docx.Document()
     padding_left = 1.5
     padding_right = -0.25
