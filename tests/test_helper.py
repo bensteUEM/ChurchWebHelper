@@ -261,8 +261,9 @@ def compare_docx_files(
     tables1 = get_docx_tables(document1)
     tables2 = get_docx_tables(document2)
 
-    if not compare_tables(tables1, tables2):
-        return False, "Tables are different"
+    table_compare_result = compare_tables(tables1, tables2)
+    if not table_compare_result[0]:
+        return table_compare_result[0], table_compare_result[1]
 
     return True, "Files are identical"
 
@@ -291,17 +292,20 @@ def get_docx_tables(document):
     return tables
 
 
-def compare_tables(tables1, tables2):
-    """Compare two sets of tables."""
+def compare_tables(tables1, tables2) -> (bool, str):
+    """Compare two sets of tables.
+
+    Returns: if identical, and reason
+    """
     if len(tables1) != len(tables2):
-        return False
+        return False, "length of table does not match"
 
     for table1, table2 in zip(tables1, tables2, strict=True):
         if len(table1) != len(table2):
-            return False
+            return False, "length of tables elements does not match"
 
         for row1, row2 in zip(table1, table2, strict=True):
             if row1 != row2:
-                return False
+                return False, f"row is different: {row1}, {row2}"
 
-    return True
+    return True, "identical"
