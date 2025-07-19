@@ -54,8 +54,6 @@ from church_web_helper.service_information_transformation import (
 )
 from flask_session import Session
 
-logger = logging.getLogger(__name__)
-
 config_file = Path("logging_config.json")
 with config_file.open(encoding="utf-8") as f_in:
     logging_config = json.load(f_in)
@@ -63,6 +61,7 @@ with config_file.open(encoding="utf-8") as f_in:
     if not log_directory.exists():
         log_directory.mkdir(parents=True)
     logging.config.dictConfig(config=logging_config)
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +257,7 @@ def download_events() -> str:
             service_groups=session["serviceGroups"],
         )
     if request.method == "POST":
-        if "event_id" not in request.form:
+        if "event_id" not in request.form.keys(): #TODO check if .keys or not #31
             return redirect(url_for("download_events"))
         event_id = int(request.form["event_id"])
         if "submit_docx" in request.form:
@@ -298,7 +297,7 @@ def download_plan_months() -> str:
         "special_day_calendar_ids": [52, 72],
         "selected_calendars": [2],
         "available_resource_type_ids": [4, 6, 5],
-        "selected_resources": [8, 20, 21, 16, 17],
+        "selected_resources": [-1, 8, 20, 21, 16, 17],
         "selected_program_services": [1],
         "selected_title_prefix_groups": [89, 355, 358, 361, 367, 370, 373],
         "selected_music_services": [9, 61],
@@ -320,15 +319,17 @@ def download_plan_months() -> str:
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
     logger.debug("retrieved available calendars len=%s", len(available_calendars))
-
     resources = session["ct_api"].get_resource_masterdata(resultClass="resources")
     logger.debug("retrieved available resources len=%s", len(resources))
 
     # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization
     available_resources = {
-        resource["id"]: resource["name"]
-        for resource in resources
-        if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
+        -1: "Ortsangabe nicht ausgewählt",
+        **{
+            resource["id"]: resource["name"]
+            for resource in resources
+            if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
+        },
     }
     logger.debug(
         "selected available resources %s/%s", len(available_resources), len(resources)
@@ -411,6 +412,8 @@ def download_plan_months() -> str:
         )
     if request.method == "POST":
         logger.info("Responding to POST request")
+        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
+        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
 
         selected_calendars = [
             int(calendar_id)
@@ -493,33 +496,6 @@ def download_plan_months() -> str:
             }
             logger.debug("finished preparing simple attributes")
 
-            # location
-            data["location"] = list(
-                get_primary_resource(
-                    appointment_id=item["id"],
-                    relevant_date=item["startDate"],
-                    api=session["ct_api"],
-                    considered_resource_ids=selected_resources,
-                )
-            )
-            if len(data["location"]) > 0:
-                data["location"] = data["location"][0]
-            else:
-                data["location"] = "Ortsangabe nicht ausgewählt"
-
-            replacements = {
-                "Marienkirche": "Marienkirche Baiersbronn",
-                "Michaelskirche (MIKI)": "Michaelskirche Friedrichstal",
-                "Johanneskirche (JOKI)": "Johanneskirche Tonbach",
-                "Gemeindehaus Großer Saal": "Gemeindehaus Baiersbronn",
-                "Gemeindehaus Kleiner Saal": "Gemeindehaus Baiersbronn",
-            }
-
-            for old, new in replacements.items():
-                data["location"] = data["location"].replace(old, new)
-
-            logger.debug("finished preparing location attributes")
-
             # Predigt
             data["predigt"] = get_title_name_services(
                 calendar_ids=selected_calendars,
@@ -541,6 +517,35 @@ def download_plan_months() -> str:
                 considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads"),
             )
             logger.debug("finished preparing specialService attributes")
+
+            # location
+            data["location"] = list(
+                get_primary_resource(
+                    appointment_id=item["id"],
+                    relevant_date=item["startDate"],
+                    api=session["ct_api"],
+                    considered_resource_ids=selected_resources,
+                )
+            )
+            if len(data["location"]) > 0:
+                data["location"] = data["location"][0]
+            else:
+                data["location"] = "Ortsangabe nicht ausgewählt"
+                if -1 not in selected_resources:
+                    #-1 is a special case added to available resources manually
+                    continue  # don't add calendar appointment to entries
+
+            replacements = {
+                "Marienkirche": "Marienkirche Baiersbronn",
+                "Michaelskirche (MIKI)": "Michaelskirche Friedrichstal",
+                "Johanneskirche (JOKI)": "Johanneskirche Tonbach",
+                "Gemeindehaus Großer Saal": "Gemeindehaus Baiersbronn",
+                "Gemeindehaus Kleiner Saal": "Gemeindehaus Baiersbronn",
+            }
+
+            for old, new in replacements.items():
+                data["location"] = data["location"].replace(old, new)
+            logger.debug("finished preparing location attributes")
 
             # Individual services with lastnames for Table overview
             for service_name in ["predigt", "organist", "musikteam", "taufe"]:
@@ -658,7 +663,6 @@ def download_plan_months() -> str:
             )
             os.remove(filename)
             return response
-        return None
     return None
 
 

@@ -13,13 +13,17 @@ import pandas as pd
 import pytest
 import pytz
 from churchtools_api.churchtools_api import ChurchToolsApi
+from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
 from tzlocal import get_localzone
 
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
+    get_group_name_services,
+    get_group_title_of_person,
     get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
+    get_title_name_services,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +115,7 @@ class Test_Helper:
     )
     def test_get_special_day_name(self, date: datetime, expected_output: str) -> None:
         """Check that special day names can be identified."""
+
         special_name_calendar_ids = [52, 72]
 
         assert (
@@ -146,14 +151,17 @@ class Test_Helper:
                 "predigt": ["P1", "P2", "P1", "P2"],
                 "shortName": ["mit Abendmahl", None, None, None],
                 "specialService": [None, "mit Kirchenchor", None, None],
-                "specialDayName": [None, None, None, None],
+                "specialDayName": ["SD2", "SD1", "SD1", "SD2"],
             }
         )
         df_sample["startDate"] = df_sample["startDate"].dt.tz_localize(None)
+        df_sample = df_sample.sort_values(
+            by=["location", "startDate", "shortDay", "specialDayName", "shortTime"]
+        )
         df_data = (
             df_sample.pivot_table(
                 values=["shortTime", "shortName", "predigt", "specialService"],
-                index=["specialDayName", "startDate", "shortDay"],
+                index=["startDate", "shortDay", "specialDayName"],
                 columns=["location"],
                 aggfunc=list,
                 fill_value="",
@@ -171,8 +179,8 @@ class Test_Helper:
             df_data,
             from_date=datetime(year=2024, month=1, day=1).astimezone(get_localzone()),
         )
-
-        assert compare_docx_files(result, expected_sample)
+        compare_result = compare_docx_files(result, expected_sample)
+        assert compare_result[0], compare_result[1]
 
     def test_get_primary_resource(self) -> None:
         """Check if primary resource can be identified."""
@@ -192,8 +200,102 @@ class Test_Helper:
 
         assert result == EXPECTED_RESULT
 
+    def test_get_title_name_services(self):
+        SAMPLE_CALENDAR_IDS = [2]
+        SAMPLE_APPOINTMENT_ID = 330763
+        SAMPLE_DATE = datetime(year=2024, month=9, day=29)
+        SAMPLE_SERVICES = [1]
+        SAMPLE_GROUPS_FOR_PREFIX = [89, 355, 358, 361, 367, 370, 373]
 
-def test_compare_docx_files() -> None:
+        result = get_title_name_services(
+            calendar_ids=SAMPLE_CALENDAR_IDS,
+            appointment_id=SAMPLE_APPOINTMENT_ID,
+            relevant_date=SAMPLE_DATE,
+            considered_program_services=SAMPLE_SERVICES,
+            considered_groups=SAMPLE_GROUPS_FOR_PREFIX,
+            api=self.ct_api,
+        )
+
+        EXPECTED_RESULT = "Pfarrer Vögele"
+        assert result == EXPECTED_RESULT
+
+    @pytest.mark.parametrize(
+        "person_id, relevant_groups, expected_result",
+        [
+            (51, [367, 89, 355, 358], "Pfarrer"),
+            (51, [], ""),
+            (822, [367, 89, 355, 358], "Pfarrerin"),
+            (110, [367, 89, 355, 358], "Prädikant"),
+            (205, [367, 89, 355, 358], "Pfarrer i.R."),
+            (911, [367, 89, 355, 358], "Pfarrerin i.R."),
+            (423, [370], "Pastoralreferent (Kath.)"),
+            (420, [370], "Pastoralreferentin (Kath.)"),
+            (513, [355, 358], ""),
+            (640, [358], "Diakon"),
+        ],
+    )
+    def test_get_group_title_of_person(
+        self, person_id, relevant_groups, expected_result
+    ):
+        """Check that titles by group can be retrieved
+
+        ELKW1610 specific IDs -
+        """
+        result = get_group_title_of_person(
+            person_id,
+            relevant_groups,
+            api=self.ct_api,
+        )
+        assert expected_result == result
+
+    # ELKW1610 specific IDs
+    # 330754 - Kirchenchor 29.09 FTal 9:00
+    # 327886 - Musikteam 29.9 GH
+    # 330763 - InJoyChor Tonbach 29.9 - 10:15
+    # 327684 - PChor - 8.9
+    @pytest.mark.parametrize(
+        "appointment_id, relevant_date, considered_services, expected_result",
+        [
+            (327886, datetime(year=2024, month=9, day=29), [9, 61], ""),
+            (330754, datetime(year=2024, month=9, day=29), [9, 61], "mit Kirchenchor"),
+            (330754, datetime(year=2024, month=9, day=29), [], ""),
+            (
+                330763,
+                datetime(year=2024, month=9, day=29),
+                [9, 61],
+                "mit InJoy Chor",
+            ),  # Testing "mit InJoy Chor, Kirchenchor"
+            (
+                327847,
+                datetime(year=2024, month=9, day=8),
+                [9, 61],
+                "mit Posaunenchor",
+            ),  # Testing "mit Kirchenchor und Posaunenchor"
+        ],
+    )
+    def test_get_group_name_services(
+        self, appointment_id, relevant_date, considered_services, expected_result
+    ):
+        """Check that special service group names can be retrieved
+
+        ELKW1610 specific IDs -
+        """
+        SAMPLE_CALENDAR_IDS = [2]
+        SAMPLE_GROUPTYPE_ROLE_ID_LEADS = [9, 16]
+
+        result = get_group_name_services(
+            calendar_ids=SAMPLE_CALENDAR_IDS,
+            appointment_id=appointment_id,
+            relevant_date=relevant_date,
+            api=self.ct_api,
+            considered_music_services=considered_services,
+            considered_grouptype_role_ids=SAMPLE_GROUPTYPE_ROLE_ID_LEADS,
+        )
+
+        assert expected_result == result
+
+
+def test_compare_docx_files():
     """Check that two docx documents can be compared."""
     FILENAME = "tests/samples/test_get_plan_months.docx"
     FILENAME2 = "tests/samples/test_get_plan_months_other.docx"
@@ -230,8 +332,9 @@ def compare_docx_files(
     tables1 = get_docx_tables(document1)
     tables2 = get_docx_tables(document2)
 
-    if not compare_tables(tables1, tables2):
-        return False, "Tables are different"
+    table_compare_result = compare_tables(tables1, tables2)
+    if not table_compare_result[0]:
+        return table_compare_result[0], table_compare_result[1]
 
     return True, "Files are identical"
 
@@ -256,17 +359,20 @@ def get_docx_tables(document: docx.Document) -> str:
     return tables
 
 
-def compare_tables(tables1: docx.table, tables2: docx.table) -> bool:
-    """Compare two sets of tables."""
+def compare_tables(tables1: docx.table, tables2: docx.table) -> (bool, str):
+    """Compare two sets of tables.
+
+    Returns: if identical, and reason
+    """
     if len(tables1) != len(tables2):
-        return False
+        return False, "length of table does not match"
 
-    for table1, table2 in zip(tables1, tables2, strict=False):
+    for table1, table2 in zip(tables1, tables2, strict=True):
         if len(table1) != len(table2):
-            return False
+            return False, "length of tables elements does not match"
 
-        for row1, row2 in zip(table1, table2, strict=False):
+        for row1, row2 in zip(table1, table2, strict=True):
             if row1 != row2:
-                return False
+                return False, f"row is different: {row1}, {row2}"
 
-    return True
+    return True, "identical"
