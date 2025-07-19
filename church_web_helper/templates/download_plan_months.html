@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html" lang="en">
+{% include 'header.html' %}
+
+<body>
+    {% include 'error.html' %}
+    {% include 'navbar.html' %}
+    <div class="container">
+        <div class="container-fluid">
+            <form action="{{ url_for('download_plan_months') }}" class="form-floating mb-3" method="POST">
+                <h2>Filterung</h2>
+                <div class="row">
+                    <div class="col-auto">
+                        <label for="selected_calendars" class="form-label">Kalender</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_calendars"
+                            size="10" name="selected_calendars">
+                            {% for calendar_id, calendar_name in available_calendars.items() %}
+                            <option {% if calendar_id in selected_calendars %} selected{% endif %}
+                                value="{{calendar_id}}">
+                                {{calendar_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label for="selected_resources" class="form-label">Resourcen</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_resources"
+                            size="10" name="selected_resources">
+                            {% for resource_id, resource_name in available_resources.items() %}
+                            <option {% if resource_id in selected_resources %} selected{% endif %}
+                                value="{{resource_id}}">
+                                {{resource_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <div class="row">
+                            <label for="from_date" class="form-label">Von</label>
+                            <input type="date" id="from_date" class="form-control" name="from_date"
+                                value="{{ from_date.strftime('%Y-%m-%d') }}">
+                        </div>
+                        <div class="row">
+                            <label for="to_date" class="form-label">Bis</label>
+                            <input type="date" id="to_date" class="form-control" name="to_date"
+                                value="{{ to_date.strftime('%Y-%m-%d') }}">
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <label for="selected_program_services" class="form-label">Program Services</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_program_services"
+                            size="10" name="selected_program_services">
+                            {% for service_id, service_name in available_program_services.items() %}
+                            <option {% if service_id in selected_program_services %} selected{% endif %}
+                                value="{{service_id}}">
+                                {{service_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label for="selected_music_services" class="form-label">Music Services</label>
+                        <select class="form-select" multiple aria-label="multiple select" id="selected_music_services"
+                            size="10" name="selected_music_services">
+                            {% for service_id, service_name in available_music_services.items() %}
+                            <option {% if service_id in selected_music_services %} selected{% endif %}
+                                value="{{service_id}}">
+                                {{service_name}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <input type="submit" name="action" class="btn btn-secondary" value="Auswahl anpassen">
+                <input type="submit" name="action" class="btn btn-primary" value="DOCx Document Download"> </br>
+            </form>
+        </div>
+        {% if data %}
+        <h2>Applicable Calendar Entry data</h2>
+        {{data | safe}}
+        
+        {% endif %}
+    </div>
+</body>
+
+</html>

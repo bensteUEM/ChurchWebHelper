@@ -1,5 +1,4 @@
 {
-    "python.testing.defaultTestFramework": "pytest",
     "python.testing.pytestEnabled": true,
     "python.testing.pytestPath": "/tests",
     "python.testing.unittestEnabled": false,
@@ -8,6 +7,5 @@
     ],
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff"
-    },
-    "python.formatting.provider": "none"
+    }
 }

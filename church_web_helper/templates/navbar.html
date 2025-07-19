@@ -6,46 +6,62 @@
       class="navbar-toggler-icon"></span></button>
   <div class="collapse navbar-collapse" id="navbarSupportedContent">
     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-      <li class="nav-item">
-        <a class="nav-link {% if request.path == '/events' %}{% endif %}" aria-current="page" href="/events">Events
-          Download</a>
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          Downloads</a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li class="nav-item">
+            <a class="nav-link" {% if request.path==url_for('download_events') %}aria-current="page" {% endif %}
+              href="{{url_for('download_events')}}">Ablauf als Word</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" {% if request.path==url_for('download_plan_months') %}aria-current="page" {% endif %}
+              href="{{url_for('download_plan_months')}}">Monatsplan</a>
+          </li>
+        </ul>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/communi/events' %}{% endif %}" aria-current="page"
-          href="/communi/events">Communi</a>
+        <a class="nav-link" {% if request.path==url_for('communi_events') %}aria-current="page" {% endif %}
+          href="{{url_for('communi_events')}}">Communi</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/ct_calendar_appointments' %}{% endif %}" aria-current="page"
-          href="/ct/calendar_appointments?{{calendar_appointments_params}}">CT Calendar Appointments</a>
+        <a class="nav-link" {% if request.path==url_for('ct_calendar_appointments') %} aria-current="page" {% endif %}
+          href="{{url_for('ct_calendar_appointments')}}?{{calendar_appointments_params}}">CT Calendar Appointments</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == '/ct_service_workload' %}{% endif %}" aria-current="page"
-          href="/ct/service_workload">CT Service Workload</a>
+        <a class="nav-link" {% if request.path==url_for('ct_service_workload') %}aria-current="page" {% endif %}
+          href="{{url_for('ct_service_workload')}}">CT Service Workload</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == url_for('ct_contacts') %}{% endif %}" aria-current="page"
+        <a class="nav-link" {% if request.path==url_for('ct_contacts') %}aria-current="page" {% endif %}
           href="{{url_for('ct_contacts')}}">Contacts</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == url_for('ct_posts') %}{% endif %}" aria-current="page"
+        <a class="nav-link" {% if request.path==url_for('ct_posts') %}aria-current="page" {% endif %}
           href="{{url_for('ct_posts')}}">CT Posts</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link {% if request.path == url_for('test') %}{% endif %}" aria-current="page"
+        <a class="nav-link" {% if request.path==url_for('test') %} aria-current="page" {% endif %}
           href="{{url_for('test')}}">Test</a>
       </li>
+    </ul>
+    </li>
+
+
+
+
     </ul>
     <ul class="navbar-nav ml-auto">
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Logins</a>
         <ul class="dropdown-menu dropdown-menu-end">
           <li class="nav-item">
-            <a class="nav-link {% if request.path == '/ct/login' %}{% endif %}" aria-current="page"
-              href="/ct/login">ChurchTools Login</a>
+            <a class="nav-link" {% if request.path==url_for('login_ct') %} aria-current="page" {% endif %}
+              href="{{url_for('login_ct')}}">ChurchTools Login</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if request.path == '/communi/login' %}{% endif %}" aria-current="page"
-              href="/communi/login">Communi Login</a>
+            <a class="nav-link" {% if request.path==url_for('login_communi') %}aria-current="page" {% endif %}
+              href="{{url_for('login_communi')}}">Communi Login</a>
           </li>
         </ul>
       </li>

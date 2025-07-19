@@ -8,10 +8,11 @@ import logging.config
 import os
 import re
 import urllib
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from pathlib import Path
 
 import pandas as pd
+import pytz
 import toml
 import vobject
 from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
@@ -23,12 +24,28 @@ from communi_api.churchToolsActions import (
 )
 from communi_api.communi_api import CommuniApi
 from dateutil.relativedelta import relativedelta
-from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from flask import (
+    Flask,
+    Response,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    session,
+    url_for,
+)
 from matplotlib import pyplot as plt
 
+from church_web_helper.helper import (
+    deduplicate_df_index_with_lists,
+    extract_relevant_calendar_appointment_shortname,
+    get_group_name_services,
+    get_plan_months_docx,
+    get_primary_resource,
+    get_special_day_name,
+    get_title_name_services,
+)
 from flask_session import Session
-
-logger = logging.getLogger(__name__)
 
 config_file = Path("logging_config.json")
 with config_file.open(encoding="utf-8") as f_in:
@@ -37,6 +54,7 @@ with config_file.open(encoding="utf-8") as f_in:
     if not log_directory.exists():
         log_directory.mkdir(parents=True)
     logging.config.dictConfig(config=logging_config)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(16)
@@ -66,7 +84,7 @@ def index():
 
 
 @app.before_request
-def check_session():
+def check_session() -> Response | None:
     """Session variable should contain ct_api and communi_api.
 
     If not a redirect to respective login pages should be executed
@@ -83,7 +101,7 @@ def check_session():
 
 
 @app.route("/ct/login", methods=["GET", "POST"])
-def login_ct():
+def login_ct() -> str:
     """Update login information for CT."""
     if request.method == "POST":
         user = request.form["ct_user"]
@@ -106,7 +124,7 @@ def login_ct():
 
 
 @app.route("/communi/login", methods=["GET", "POST"])
-def login_communi():
+def login_communi() -> str:
     """Update login information for Communi Login."""
     if request.method == "POST":
         communi_server = request.form["communi_server"]
@@ -133,18 +151,18 @@ def login_communi():
 
 
 @app.route("/main")
-def main():
+def main() -> str:
     return render_template("main.html", version=app.config["VERSION"])
 
 
 @app.route("/test")
-def test():
+def test() -> str:
     test = app.config["CT_DOMAIN"], app.config["COMMUNI_SERVER"]
-    return render_template("test.html", test=test)
+    return render_template("test.html", message=test)
 
 
 @app.route("/communi/events")
-def communi_events():
+def communi_events() -> Response | str:
     """This page is used to admin communi groups based on churchtools planning information.
 
     It will list all events from past 14 and future 15 days and show their link if they exist
@@ -194,8 +212,8 @@ def communi_events():
     return None
 
 
-@app.route("/events", methods=["GET", "POST"])
-def events():
+@app.route("/download/events", methods=["GET", "POST"])
+def download_events() -> str:
     if request.method == "GET":
         session["serviceGroups"] = session["ct_api"].get_event_masterdata(
             resultClass="serviceGroups", returnAsDict=True
@@ -224,14 +242,14 @@ def events():
         logger.debug(f"{len(events_temp)} Events kept because schedule exists")
 
         return render_template(
-            "events.html",
+            "download_events.html",
             ct_domain=app.config["CT_DOMAIN"],
             event_choices=event_choices,
             service_groups=session["serviceGroups"],
         )
     if request.method == "POST":
-        if "event_id" not in request.form:
-            redirect("/events")
+        if "event_id" not in request.form.keys():
+            return redirect(url_for("download_events"))
         event_id = int(request.form["event_id"])
         if "submit_docx" in request.form:
             event = session["events"][event_id]
@@ -262,8 +280,254 @@ def events():
     return None
 
 
+@app.route("/download/plan_months", methods=["GET", "POST"])
+def download_plan_months() -> str:
+    # default params are set ELKW1610.krz.tools specific and must be adjusted in case a different CT instance is used
+    DEFAULTS = {
+        "default_timeframe_months": 1,
+        "special_day_calendar_ids": [52, 72],
+        "selected_calendars": [2],
+        "available_resource_type_ids": [4, 6, 5],
+        "selected_resources": [-1, 8, 20, 21, 16, 17],
+        "selected_program_services": [1],
+        "selected_title_prefix_groups": [89, 355, 358, 361, 367, 370, 373],
+        "selected_music_services": [9, 61],
+        "grouptype_role_id_leads": [
+            9,  # Leitung in "Dienst"
+            16,  # Leitung in "Kleingruppe"
+        ],
+        "program_service_group_id": 1,
+        "music_service_group_id": 4,
+    }
+
+    available_calendars = {
+        cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
+    }
+
+    resources = session["ct_api"].get_resource_masterdata(resultClass="resources")
+    # resource_types = session["ct_api"].get_resource_masterdata(result_type="resourceTypes") # Check your Resource Types IDs here for customization
+    available_resources = {
+        -1: "Ortsangabe nicht ausgewählt",
+        **{
+            resource["id"]: resource["name"]
+            for resource in resources
+            if resource["resourceTypeId"] in DEFAULTS.get("available_resource_type_ids")
+        },
+    }
+
+    event_masterdata = session["ct_api"].get_event_masterdata()
+    # service_groups = event_masterdata["serviceGroups"] # Check your Service Group IDs here for customization
+    available_program_services = {
+        service["id"]: service["name"]
+        for service in event_masterdata["services"]
+        if service["serviceGroupId"] == DEFAULTS.get("program_service_group_id")
+    }
+    available_music_services = {
+        service["id"]: service["name"]
+        for service in event_masterdata["services"]
+        if service["serviceGroupId"] == DEFAULTS.get("music_service_group_id")
+    }
+
+    if request.method == "GET":
+        selected_calendars = DEFAULTS.get(
+            "selected_calendars", available_calendars.keys()
+        )
+        selected_resources = DEFAULTS.get(
+            "selected_resources", available_resources.keys()
+        )
+        selected_program_services = DEFAULTS.get(
+            "selected_program_services", available_program_services.keys()
+        )
+        selected_music_services = DEFAULTS.get(
+            "selected_music_services", available_music_services.keys()
+        )
+
+        from_date = datetime.now().date()
+        if from_date.month == 12:
+            from_date = datetime(from_date.year + 1, 1, 1)
+        else:
+            from_date = datetime(from_date.year, from_date.month + 1, 1)
+        from_date = datetime.combine(from_date, time.min)
+
+        to_date = datetime.combine(
+            from_date
+            + relativedelta(months=DEFAULTS.get("default_timeframe_months"))
+            - relativedelta(days=1),
+            time.max,
+        )
+
+        return render_template(
+            "download_plan_months.html",
+            data=None,
+            available_calendars=available_calendars,
+            selected_calendars=selected_calendars,
+            available_resources=available_resources,
+            selected_resources=selected_resources,
+            available_program_services=available_program_services,
+            selected_program_services=selected_program_services,
+            available_music_services=available_music_services,
+            selected_music_services=selected_music_services,
+            from_date=from_date,
+            to_date=to_date,
+        )
+    if request.method == "POST":
+        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
+        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+
+        selected_calendars = [
+            int(calendar_id)
+            for calendar_id in request.form.getlist("selected_calendars")
+        ]
+        selected_resources = [
+            int(resource_id)
+            for resource_id in request.form.getlist("selected_resources")
+        ]
+
+        selected_program_services = [
+            int(service_id)
+            for service_id in request.form.getlist("selected_program_services")
+        ]
+
+        selected_music_services = [
+            int(service_id)
+            for service_id in request.form.getlist("selected_music_services")
+        ]
+
+        from_date = datetime.strptime(request.form["from_date"], "%Y-%m-%d")
+        to_date = datetime.strptime(request.form["to_date"], "%Y-%m-%d")
+
+        calendar_appointments = session["ct_api"].get_calendar_appointments(
+            calendar_ids=selected_calendars, from_=from_date, to_=to_date
+        )
+
+        entries = []
+        for item in calendar_appointments:
+            # startDate casting
+            if len(item["startDate"]) > 10:
+                item["startDate"] = (
+                    datetime.strptime(item["startDate"], "%Y-%m-%dT%H:%M:%Sz")
+                    .replace(tzinfo=pytz.UTC)
+                    .astimezone()
+                )
+            elif len(item["startDate"]) == 10:
+                item["startDate"] = datetime.strptime(
+                    item["startDate"], "%Y-%m-%d"
+                ).astimezone()
+
+            # Simple attributes
+            data = {
+                "caption": item["caption"],
+                "startDate": item["startDate"],
+                "shortName": extract_relevant_calendar_appointment_shortname(
+                    item["caption"]
+                ),
+                "shortDay": item["startDate"].strftime("%a %d.%m"),
+                "specialDayName": get_special_day_name(
+                    ct_api=session["ct_api"],
+                    special_name_calendar_ids=DEFAULTS.get("special_day_calendar_ids"),
+                    date=item["startDate"],
+                ),
+                "shortTime": item["startDate"].strftime("%H.%S")
+                if item["startDate"].hour > 0
+                else "Ganztag",
+            }
+
+            # Predigt
+            data["predigt"] = get_title_name_services(
+                calendar_ids=selected_calendars,
+                appointment_id=item["id"],
+                relevant_date=item["startDate"],
+                api=session["ct_api"],
+                considered_program_services=selected_program_services,
+                considered_groups=DEFAULTS.get("selected_title_prefix_groups"),
+            )
+
+            data["specialService"] = get_group_name_services(
+                calendar_ids=selected_calendars,
+                appointment_id=item["id"],
+                relevant_date=item["startDate"],
+                api=session["ct_api"],
+                considered_music_services=selected_music_services,
+                considered_grouptype_role_ids=DEFAULTS.get("grouptype_role_id_leads"),
+            )
+
+            # location
+            data["location"] = list(
+                get_primary_resource(
+                    appointment_id=item["id"],
+                    relevant_date=item["startDate"],
+                    api=session["ct_api"],
+                    considered_resource_ids=selected_resources,
+                )
+            )
+            if len(data["location"]) > 0:
+                data["location"] = data["location"][0]
+            else:
+                data["location"] = "Ortsangabe nicht ausgewählt"
+                if -1 not in selected_resources:
+                    #-1 is a special case added to available resources manually
+                    continue  # don't add calendar appointment to entries
+
+            replacements = {
+                "Marienkirche": "Marienkirche Baiersbronn",
+                "Michaelskirche (MIKI)": "Michaelskirche Friedrichstal",
+                "Johanneskirche (JOKI)": "Johanneskirche Tonbach",
+                "Gemeindehaus Großer Saal": "Gemeindehaus Baiersbronn",
+                "Gemeindehaus Kleiner Saal": "Gemeindehaus Baiersbronn",
+            }
+
+            for old, new in replacements.items():
+                data["location"] = data["location"].replace(old, new)
+            entries.append(data)
+
+        df_raw: pd.DataFrame = pd.DataFrame(entries)
+        df_data_pivot = (
+            df_raw.pivot_table(
+                values=["shortTime", "shortName", "predigt", "specialService"],
+                index=["startDate", "shortDay", "specialDayName"],
+                columns=["location"],
+                aggfunc=list,
+                fill_value="",
+            )
+            .reorder_levels([1, 0], axis=1)
+            .sort_index(axis=1)
+            .reset_index()
+            .drop(columns="startDate")
+        )
+        df_data = deduplicate_df_index_with_lists(df_data_pivot)
+
+        action = request.form.get("action")
+        if action == "Auswahl anpassen":
+            return render_template(
+                "download_plan_months.html",
+                data=df_data.to_html(
+                    classes="table table-striped text-center", index=True
+                ),
+                available_calendars=available_calendars,
+                selected_calendars=selected_calendars,
+                available_resources=available_resources,
+                selected_resources=selected_resources,
+                available_program_services=available_program_services,
+                selected_program_services=selected_program_services,
+                available_music_services=available_music_services,
+                selected_music_services=selected_music_services,
+                from_date=from_date,
+                to_date=to_date,
+            )
+
+        if action == "DOCx Document Download":
+            document = get_plan_months_docx(df_data, from_date=from_date)
+            filename = f"Monatsplan_{from_date.strftime('%Y_%B')}.docx"
+            document.save(filename)
+            response = send_file(
+                path_or_file=os.getcwd() + "/" + filename, as_attachment=True
+            )
+            os.remove(filename)
+            return response
+    return None
+
 @app.route("/ct/calendar_appointments")
-def ct_calendar_appointments():
+def ct_calendar_appointments() -> str:
     """Page which can be used to display ChurchTools calendar appointments for IFrame use.
 
     Use get param calendar_id=2 or similar to define a calendar
@@ -317,7 +581,7 @@ def ct_calendar_appointments():
 
     calendar_ids = [int(calendar_id)]
     from_ = datetime.today()
-    to_ = from_ + timedelta(days=int(days))
+    to_ = from_ + relativedelta(days=int(days))
 
     appointments = session["ct_api"].get_calendar_appointments(
         calendar_ids=calendar_ids, from_=from_, to_=to_
@@ -347,13 +611,17 @@ def ct_calendar_appointments():
             isinstance(special_name_calendar_ids, list)
             and len(special_name_calendar_ids) > 0
         ):
-            special_names = session["ct_api"].get_calendar_appointments(
+            special_name = get_special_day_name(
+                ct_api=session["ct_api"],
+                special_name_calendar_ids=special_name_calendar_ids,
+                date=date,
+            )
+            session["ct_api"].get_calendar_appointments(
                 calendar_ids=special_name_calendar_ids,
                 from_=date,
-                to_=date + timedelta(days=1),
+                to_=date + relativedelta(days=1),
             )
-            if special_names is not None and len(special_names) > 0:
-                special_name = special_names[0]["caption"]
+            if special_name is not None and len(special_name) > 0:
                 day = f"{day} ({special_name})"
 
         time = date.astimezone().strftime("%H:%M")
@@ -387,7 +655,7 @@ def ct_calendar_appointments():
 
 
 @app.route("/ct/service_workload", methods=["GET", "POST"])
-def ct_service_workload():
+def ct_service_workload() -> str:
     available_calendars = {
         cal["id"]: cal["name"] for cal in session["ct_api"].get_calendars()
     }
@@ -615,7 +883,7 @@ def ct_service_workload():
 
 
 @app.route("/ct/contacts", methods=["GET"])
-def ct_contacts():
+def ct_contacts() -> str:
     """Vcard export for ChurchTools contacts.
 
     Generates VCards for Name / Phone number for all available persons

@@ -1,9 +1,7 @@
-import ast
 import json
 import logging
 import logging.config
 import os
-import pytest
 from pathlib import Path
 
 from churchtools_api.churchtools_api import ChurchToolsApi
@@ -18,7 +16,7 @@ with config_file.open(encoding="utf-8") as f_in:
         log_directory.mkdir(parents=True)
     logging.config.dictConfig(config=logging_config)
 
-class TestsChurchWebHelper():
+class TestsChurchWebHelper:
     def setup_class(self, *args, **kwargs) -> None:
 
         if "CT_TOKEN" in os.environ:
@@ -41,7 +39,7 @@ class TestsChurchWebHelper():
         self.api = ChurchToolsApi(
             domain=self.ct_domain,
             ct_token=self.ct_token)
-        
+
         logger.info("Executing Tests RUN")
 
     def tearDown(self)->None:
