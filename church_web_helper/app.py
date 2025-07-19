@@ -38,11 +38,11 @@ from flask import (
 )
 from matplotlib import pyplot as plt
 
+from church_web_helper.export_docx import get_plan_months_docx
+from church_web_helper.export_xlsx import get_plan_months_xlsx
 from church_web_helper.helper import (
     deduplicate_df_index_with_lists,
     extract_relevant_calendar_appointment_shortname,
-    get_plan_months_docx,
-    get_plan_months_xlsx,
     get_primary_resource,
     get_special_day_name,
 )
@@ -61,8 +61,6 @@ with config_file.open(encoding="utf-8") as f_in:
     if not log_directory.exists():
         log_directory.mkdir(parents=True)
     logging.config.dictConfig(config=logging_config)
-logger = logging.getLogger(__name__)
-
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -257,7 +255,7 @@ def download_events() -> str:
             service_groups=session["serviceGroups"],
         )
     if request.method == "POST":
-        if "event_id" not in request.form.keys(): #TODO check if .keys or not #31
+        if "event_id" not in request.form:
             return redirect(url_for("download_events"))
         event_id = int(request.form["event_id"])
         if "submit_docx" in request.form:
@@ -271,7 +269,10 @@ def download_events() -> str:
             }
 
             document = session["ct_api"].get_event_agenda_docx(
-                agenda, serviceGroups=selectedServiceGroups, excludeBeforeEvent=False
+                # TODO@bensteUEM: https://github.com/bensteUEM/ChurchWebHelper/issues/47 .
+                agenda,
+                serviceGroups=selectedServiceGroups,
+                excludeBeforeEvent=False,
             )
             filename = agenda["name"] + ".docx"
             document.save(filename)
@@ -523,7 +524,7 @@ def download_plan_months() -> str:
                 get_primary_resource(
                     appointment_id=item["id"],
                     relevant_date=item["startDate"],
-                    api=session["ct_api"],
+                    ct_api=session["ct_api"],
                     considered_resource_ids=selected_resources,
                 )
             )
@@ -532,7 +533,7 @@ def download_plan_months() -> str:
             else:
                 data["location"] = "Ortsangabe nicht ausgewählt"
                 if -1 not in selected_resources:
-                    #-1 is a special case added to available resources manually
+                    # -1 is a special case added to available resources manually
                     continue  # don't add calendar appointment to entries
 
             replacements = {

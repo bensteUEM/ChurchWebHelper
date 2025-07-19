@@ -91,11 +91,13 @@ def get_group_title_of_person(
 
     gender_map = api.get_persons_masterdata(resultClass="sexes", returnAsDict=True)
 
-    if gender_map[person["sexId"]] == "sex.female" and len(group_name) > 0:
+    person_sex_id = person["sexId"]
+    if not person_sex_id:
+        person_sex_id = 0  # TODO@bensteUEM: workaround for https://github.com/bensteUEM/ChurchToolsAPI/issues/273
+    if gender_map[person_sex_id] == "sex.female" and len(group_name) > 0:
         parts = group_name.split(" ")
         part1_gendered = parts[0] + "in"
         group_name = " ".join([part1_gendered] + parts[1:])
-
     return group_name
 
 
@@ -188,9 +190,7 @@ def get_service_assignment_lastnames_or_unknown(
                     service_assignment["person"]["domainAttributes"]["lastName"]
                 )
             elif service_assignment.get("name"):
-                service_assignments_names.append(
-                    service_assignment["name"]
-                )
+                service_assignments_names.append(service_assignment["name"])
             else:
                 service_assignments_names.append("?")
 

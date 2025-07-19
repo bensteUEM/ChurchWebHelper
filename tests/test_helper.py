@@ -7,23 +7,14 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-import docx
-import docx.table
-import pandas as pd
 import pytest
 import pytz
 from churchtools_api.churchtools_api import ChurchToolsApi
-from churchtools_api.churchtools_api import ChurchToolsApi as CTAPI
-from tzlocal import get_localzone
 
 from church_web_helper.helper import (
     extract_relevant_calendar_appointment_shortname,
-    get_group_name_services,
-    get_group_title_of_person,
-    get_plan_months_docx,
     get_primary_resource,
     get_special_day_name,
-    get_title_name_services,
 )
 
 logger = logging.getLogger(__name__)
@@ -127,61 +118,6 @@ class Test_Helper:
             == expected_output
         )
 
-    def test_get_plan_months_docx(self) -> None:
-        """Check that plan months can be created as docx."""
-        df_sample = pd.DataFrame(
-            {
-                "shortDay": ["3.2", "23.1", "23.1", "3.2"],
-                "startDate": [
-                    datetime(year=2024, month=2, day=3).astimezone(
-                        pytz.timezone("Europe/Berlin")
-                    ),
-                    datetime(year=2024, month=1, day=23).astimezone(
-                        pytz.timezone("Europe/Berlin")
-                    ),
-                    datetime(year=2024, month=1, day=23).astimezone(
-                        pytz.timezone("Europe/Berlin")
-                    ),
-                    datetime(year=2024, month=2, day=3).astimezone(
-                        pytz.timezone("Europe/Berlin")
-                    ),
-                ],
-                "location": ["A1", "A2", "A2", "A3"],
-                "shortTime": ["08:00", "10:00", "12:00", "9:00"],
-                "predigt": ["P1", "P2", "P1", "P2"],
-                "shortName": ["mit Abendmahl", None, None, None],
-                "specialService": [None, "mit Kirchenchor", None, None],
-                "specialDayName": ["SD2", "SD1", "SD1", "SD2"],
-            }
-        )
-        df_sample["startDate"] = df_sample["startDate"].dt.tz_localize(None)
-        df_sample = df_sample.sort_values(
-            by=["location", "startDate", "shortDay", "specialDayName", "shortTime"]
-        )
-        df_data = (
-            df_sample.pivot_table(
-                values=["shortTime", "shortName", "predigt", "specialService"],
-                index=["startDate", "shortDay", "specialDayName"],
-                columns=["location"],
-                aggfunc=list,
-                fill_value="",
-            )
-            .reorder_levels([1, 0], axis=1)
-            .sort_index(axis=1)
-            .reset_index()
-            .drop(columns="startDate")
-        )
-
-        FILENAME = "tests/samples/test_get_plan_months.docx"
-        expected_sample = docx.Document(FILENAME)
-
-        result = get_plan_months_docx(
-            df_data,
-            from_date=datetime(year=2024, month=1, day=1).astimezone(get_localzone()),
-        )
-        compare_result = compare_docx_files(result, expected_sample)
-        assert compare_result[0], compare_result[1]
-
     def test_get_primary_resource(self) -> None:
         """Check if primary resource can be identified."""
         SAMPLE_EVENT_ID = 330754
@@ -194,185 +130,8 @@ class Test_Helper:
         result = get_primary_resource(
             appointment_id=SAMPLE_EVENT_ID,
             relevant_date=SAMPLE_DATE,
-            api=self.ct_api,
+            ct_api=self.ct_api,
             considered_resource_ids=RESOURCE_IDS,
         )
 
         assert result == EXPECTED_RESULT
-
-    def test_get_title_name_services(self):
-        SAMPLE_CALENDAR_IDS = [2]
-        SAMPLE_APPOINTMENT_ID = 330763
-        SAMPLE_DATE = datetime(year=2024, month=9, day=29)
-        SAMPLE_SERVICES = [1]
-        SAMPLE_GROUPS_FOR_PREFIX = [89, 355, 358, 361, 367, 370, 373]
-
-        result = get_title_name_services(
-            calendar_ids=SAMPLE_CALENDAR_IDS,
-            appointment_id=SAMPLE_APPOINTMENT_ID,
-            relevant_date=SAMPLE_DATE,
-            considered_program_services=SAMPLE_SERVICES,
-            considered_groups=SAMPLE_GROUPS_FOR_PREFIX,
-            api=self.ct_api,
-        )
-
-        EXPECTED_RESULT = "Pfarrer Vögele"
-        assert result == EXPECTED_RESULT
-
-    @pytest.mark.parametrize(
-        "person_id, relevant_groups, expected_result",
-        [
-            (51, [367, 89, 355, 358], "Pfarrer"),
-            (51, [], ""),
-            (822, [367, 89, 355, 358], "Pfarrerin"),
-            (110, [367, 89, 355, 358], "Prädikant"),
-            (205, [367, 89, 355, 358], "Pfarrer i.R."),
-            (911, [367, 89, 355, 358], "Pfarrerin i.R."),
-            (423, [370], "Pastoralreferent (Kath.)"),
-            (420, [370], "Pastoralreferentin (Kath.)"),
-            (513, [355, 358], ""),
-            (640, [358], "Diakon"),
-        ],
-    )
-    def test_get_group_title_of_person(
-        self, person_id, relevant_groups, expected_result
-    ):
-        """Check that titles by group can be retrieved
-
-        ELKW1610 specific IDs -
-        """
-        result = get_group_title_of_person(
-            person_id,
-            relevant_groups,
-            api=self.ct_api,
-        )
-        assert expected_result == result
-
-    # ELKW1610 specific IDs
-    # 330754 - Kirchenchor 29.09 FTal 9:00
-    # 327886 - Musikteam 29.9 GH
-    # 330763 - InJoyChor Tonbach 29.9 - 10:15
-    # 327684 - PChor - 8.9
-    @pytest.mark.parametrize(
-        "appointment_id, relevant_date, considered_services, expected_result",
-        [
-            (327886, datetime(year=2024, month=9, day=29), [9, 61], ""),
-            (330754, datetime(year=2024, month=9, day=29), [9, 61], "mit Kirchenchor"),
-            (330754, datetime(year=2024, month=9, day=29), [], ""),
-            (
-                330763,
-                datetime(year=2024, month=9, day=29),
-                [9, 61],
-                "mit InJoy Chor",
-            ),  # Testing "mit InJoy Chor, Kirchenchor"
-            (
-                327847,
-                datetime(year=2024, month=9, day=8),
-                [9, 61],
-                "mit Posaunenchor",
-            ),  # Testing "mit Kirchenchor und Posaunenchor"
-        ],
-    )
-    def test_get_group_name_services(
-        self, appointment_id, relevant_date, considered_services, expected_result
-    ):
-        """Check that special service group names can be retrieved
-
-        ELKW1610 specific IDs -
-        """
-        SAMPLE_CALENDAR_IDS = [2]
-        SAMPLE_GROUPTYPE_ROLE_ID_LEADS = [9, 16]
-
-        result = get_group_name_services(
-            calendar_ids=SAMPLE_CALENDAR_IDS,
-            appointment_id=appointment_id,
-            relevant_date=relevant_date,
-            api=self.ct_api,
-            considered_music_services=considered_services,
-            considered_grouptype_role_ids=SAMPLE_GROUPTYPE_ROLE_ID_LEADS,
-        )
-
-        assert expected_result == result
-
-
-def test_compare_docx_files():
-    """Check that two docx documents can be compared."""
-    FILENAME = "tests/samples/test_get_plan_months.docx"
-    FILENAME2 = "tests/samples/test_get_plan_months_other.docx"
-
-    doc1 = docx.Document(FILENAME)
-    doc2 = docx.Document(FILENAME)
-    assert compare_docx_files(doc1, doc2)[0]
-
-    doc3 = docx.Document(FILENAME2)
-    assert not compare_docx_files(doc1, doc3)[0]
-
-
-def compare_docx_files(
-    document1: docx.Document, document2: docx.Document
-) -> tuple[bool, str]:
-    """Compare both text and table content of two docx files.
-
-    Args:
-        document1: _description_
-        document2: _description_
-
-    Returns:
-        bool - if is equal
-        text - description of difference
-    """
-    # Compare text
-    text1 = get_docx_text(document1)
-    text2 = get_docx_text(document2)
-
-    if text1 != text2:
-        return False, "Text is different"
-
-    # Compare tables
-    tables1 = get_docx_tables(document1)
-    tables2 = get_docx_tables(document2)
-
-    table_compare_result = compare_tables(tables1, tables2)
-    if not table_compare_result[0]:
-        return table_compare_result[0], table_compare_result[1]
-
-    return True, "Files are identical"
-
-
-def get_docx_text(document: docx.Document) -> str:
-    """Extract text content from the docx file."""
-    full_text = [para.text for para in document.paragraphs]
-    return "\n".join(full_text)
-
-
-def get_docx_tables(document: docx.Document) -> str:
-    """Extract tables content from the docx file."""
-    tables = []
-
-    for table in document.tables:
-        table_content = []
-        for row in table.rows:
-            row_content = [cell.text.strip() for cell in row.cells]
-            table_content.append(row_content)
-        tables.append(table_content)
-
-    return tables
-
-
-def compare_tables(tables1: docx.table, tables2: docx.table) -> (bool, str):
-    """Compare two sets of tables.
-
-    Returns: if identical, and reason
-    """
-    if len(tables1) != len(tables2):
-        return False, "length of table does not match"
-
-    for table1, table2 in zip(tables1, tables2, strict=True):
-        if len(table1) != len(table2):
-            return False, "length of tables elements does not match"
-
-        for row1, row2 in zip(table1, table2, strict=True):
-            if row1 != row2:
-                return False, f"row is different: {row1}, {row2}"
-
-    return True, "identical"
