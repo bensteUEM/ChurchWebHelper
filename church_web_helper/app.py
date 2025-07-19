@@ -36,18 +36,6 @@ from flask import (
 )
 from matplotlib import pyplot as plt
 
-from flask_session import Session
-
-logger = logging.getLogger(__name__)
-
-config_file = Path("logging_config.json")
-with config_file.open(encoding="utf-8") as f_in:
-    logging_config = json.load(f_in)
-    log_directory = Path(logging_config["handlers"]["file"]["filename"]).parent
-    if not log_directory.exists():
-        log_directory.mkdir(parents=True)
-    logging.config.dictConfig(config=logging_config)
-
 from church_web_helper.helper import (
     deduplicate_df_index_with_lists,
     extract_relevant_calendar_appointment_shortname,
@@ -57,7 +45,15 @@ from church_web_helper.helper import (
     get_special_day_name,
     get_title_name_services,
 )
+from flask_session import Session
 
+config_file = Path("logging_config.json")
+with config_file.open(encoding="utf-8") as f_in:
+    logging_config = json.load(f_in)
+    log_directory = Path(logging_config["handlers"]["file"]["filename"]).parent
+    if not log_directory.exists():
+        log_directory.mkdir(parents=True)
+    logging.config.dictConfig(config=logging_config)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)

@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -15,6 +16,8 @@ from church_web_helper.helper import (
     get_special_day_name,
     get_title_name_services,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Test_Helper:
@@ -90,6 +93,9 @@ class Test_Helper:
                 "predigt": ["P1", "P2", "P1", "P2"],
                 "specialService": [None, "mit Kirchenchor", None, None],
             }
+        )
+        df_sample = df_sample.sort_values(
+            by=["location", "startDate", "shortDay", "specialDayName", "shortTime"]
         )
         df_data = (
             df_sample.pivot_table(

@@ -135,7 +135,7 @@ def get_plan_months_docx(
         run.font.size = Pt(32)
         run.font.color.rgb = RGBColor.from_string("000000")
 
-    locations = set([item[0] for item in data.columns[2:]])
+    locations = list(dict.fromkeys(item[0] for item in data.columns[2:]))
 
     table = document.add_table(rows=1, cols=len(locations) + 1)
     hdr_cells = table.rows[0].cells
